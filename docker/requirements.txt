@@ -1,0 +1,9 @@
+timm
+pytorch-lightning
+opencv-python-headless
+albumentations
+clearml
+pandas
+matplotlib
+ipython
+tqdm
