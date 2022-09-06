@@ -1,11 +1,9 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
 from clearml import TaskTypes
 import albumentations as al
 from albumentations.pytorch.transforms import ToTensorV2
 from config.list_optimizer import ListOptimizer
-import torch.nn.functional as F
 import torch
 
 @dataclass
@@ -156,7 +154,7 @@ class HyperParameters(object):
     opt_weight_decay:float = 0
     opt_momentum:float = 0.9
 
-    # scheduler
+# scheduler
 
 @dataclass
 class TrainingConfig(Config):
