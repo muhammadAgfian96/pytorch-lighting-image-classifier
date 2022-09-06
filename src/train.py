@@ -25,26 +25,37 @@ from clearml import Task
 #     script='./src/train.py',
 #     add_task_init_call=True
 # )
+Task.add_requirements('/workspace/docker/requirements.txt')
 task = Task.init(
     project_name='PL_Training',
-    task_name="test-v2",  
+    task_name=conf.TASK_NAME,  
+    task_type=conf.TYPE_TASK
 )
-task.add_requirements('docker/requirements.txt')
-pprint(os.getcwd())
-# task.started()
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
 params.pop('PROJECT_NAME')
 params.pop('TASK_NAME')
 params.pop('OUTPUT_URI')
-params = task.connect(params)
-task.set_parameters_as_dict(params)
-pprint(params)
-conf = override_config(params, conf)
+params_aug = task.connect(params['aug'], 'Augmentations')
+params_db = task.connect(params['db'], 'Database')
+params_data = task.connect(params['data'], 'Data')
+params_hyp = task.connect(params['hyp'], 'Trainings')
+params_net = task.connect(params['net'], 'Models')
+
+new_params = {
+    'aug': params_aug,
+    'data': params_data,
+    'db': params_db,
+    'hyp': params_hyp,
+    'net': params_net
+}
+
+print('CURRENT WORKDIR:', os.getcwd())
+pprint(new_params)
+conf = override_config(new_params, conf)
 pl.seed_everything(conf.data.random_seed)
 data_module = ImageDataModule(conf)
 model_classifier = ModelClassifier(conf)
-
 
 # create callbacks
 trainer = pl.Trainer(
