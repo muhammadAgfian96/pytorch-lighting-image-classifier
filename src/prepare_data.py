@@ -2,19 +2,14 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 # Note - you must have torchvision installed for this example
-from torchvision import transforms
 import random
-import glob
 import torch
 import albumentations as al
 from os.path import join
 import os
-from typing import Union
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 import cv2
-from torchvision.datasets import ImageFolder
-import torchvision.transforms as tt
 import numpy as np
 
 from clearml import StorageManager, Dataset
