@@ -1,6 +1,5 @@
 import os
 os.environ['PYTHONPATH'] = os.getcwd()
-
 from dataclasses import asdict
 from pprint import pprint
 import torch
@@ -19,11 +18,9 @@ from clearml import Task
 
 task = Task.create(
     project_name="PL_Training", 
-    task_name="test-v2",
-    output_uri=conf.OUTPUT_URI,
+    task_name="test-v2",    
     requirements_file='docker/requirements.txt',
-    repo='git@github.com:muhammadAgfian96/pytorch-lighting-image-classifier.git',
-    working_directory='/workspace'
+    repo='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
 )
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
@@ -39,8 +36,6 @@ model_classifier = ModelClassifier(conf)
 
 
 # create callbacks
-
-
 trainer = pl.Trainer(
     max_epochs=10,
     accelerator='gpu', 
