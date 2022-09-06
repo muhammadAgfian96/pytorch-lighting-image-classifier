@@ -30,7 +30,7 @@ task = Task.init(
     task_name="test-v2",  
 )
 task.add_requirements('docker/requirements.txt')
-
+pprint(os.getcwd())
 # task.started()
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
