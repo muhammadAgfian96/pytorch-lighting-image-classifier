@@ -1,1 +1,4 @@
 *logs
+clearml.conf
+dataset
+**__pycache__**
