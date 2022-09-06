@@ -1,0 +1,19 @@
+info:
+  project_name: bousteud
+  task_name: 
+  type: classification
+  output_uri: s3://10.8.0.66:9000/clearml-test
+
+data:
+  category: ['Underripe', 'Ripe']
+  batch: 4
+  split-ratio:
+    train: 0.85
+    val: 0.15
+  num_seed: 76
+
+model:
+  architecture: edgenext_x_small
+  input_size: 224
+  mean_pixel:
+  std_pixel:
