@@ -145,7 +145,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 35
+    epoch:int = 10
     learning_rate:float = 1.0e-4
     
     loss_fn = torch.nn.CrossEntropyLoss()
