@@ -1,3 +1,6 @@
+import os
+os.environ['PYTHONPATH'] = os.getcwd()
+
 from dataclasses import asdict
 from pprint import pprint
 import torch
@@ -18,9 +21,10 @@ task = Task.create(
     project_name="PL_Training", 
     task_name="test-v2",
     output_uri=conf.OUTPUT_URI,
-    requirements_file='docker/requirements.txt'    
+    requirements_file='docker/requirements.txt',
+    repo='git@github.com:muhammadAgfian96/pytorch-lighting-image-classifier.git',
+    working_directory='/workspace'
 )
-
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
 params.pop('PROJECT_NAME')
