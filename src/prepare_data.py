@@ -106,7 +106,9 @@ class ImageDataModule(pl.LightningDataModule):
     
     def prepare_data(self) -> None:
         # set clearml and download the data
-
+        dataset = Dataset.get(dataset_id=self.conf.data.dataset_id)
+        self.data_dir = dataset.get_local_copy()
+        print('DATADIR: ',self.data_dir)
         pass
 
     def setup(self, stage: str):

@@ -8,6 +8,7 @@ import torch
 
 @dataclass
 class Config(object):
+    # General
     PROJECT_NAME:str = 'bousteud'
     TASK_NAME:str = 'maturity'
     TYPE_TASK:Enum = TaskTypes.training
@@ -22,6 +23,7 @@ class Storage:
 class Data:
     random_seed:int = 76
     dir:str = '/workspace/dataset/simple'
+    dataset_id:str = '411403ce990b433aaeac743d154d52a2'
     category = ['Empty', 'Unripe', 'Underripe', 'Ripe', 'Overripe']
     batch:int = 24
     train_ratio:float = 0.80
@@ -145,7 +147,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 3
+    epoch:int = 6
     learning_rate:float = 1.0e-4
     
     loss_fn = torch.nn.CrossEntropyLoss()

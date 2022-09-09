@@ -6,6 +6,7 @@ def override_config(params:dict, conf:TrainingConfig):
     conf.aug.type_executions = params['aug']['type_executions']
     conf.data.batch = params['data']['batch']
     conf.data.dir = params['data']['dir']
+    conf.data.dataset_id = params['data']['dataset_id']
     conf.data.input_resize = params['data']['input_resize']
     conf.data.input_size = params['data']['input_size']
     conf.data.random_seed = params['data']['random_seed']

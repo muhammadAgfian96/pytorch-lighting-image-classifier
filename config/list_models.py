@@ -1,4 +1,4 @@
-[
+list_models = [
     'adv_inception_v3',
     'bat_resnext26ts',
     'beit_base_patch16_224',

@@ -8,6 +8,8 @@ from src.preare_model import ModelClassifier
 from src.prepare_data import ImageDataModule
 from config.default import TrainingConfig
 from pytorch_lightning.callbacks import ModelCheckpoint
+from config.list_models import list_models
+from config.list_optimizer import ListOptimizer
 
 from src.helper.utils import override_config
 
@@ -15,22 +17,18 @@ conf = TrainingConfig()
 conf_copy = TrainingConfig()
 
 from clearml import Task
+cwd = os.getcwd()
 
-
-# task = Task.create(
-#     project_name="PL_Training", 
-#     task_name="test-v2",    
-#     requirements_file='docker/requirements.txt',
-#     repo='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
-#     script='./src/train.py',
-#     add_task_init_call=True
-# )
-Task.add_requirements('/workspace/docker/requirements.txt')
+Task.add_requirements(os.path.join(cwd,'docker/requirements.txt'))
 task = Task.init(
     project_name='PL_Training',
     task_name=conf.TASK_NAME,  
     task_type=conf.TYPE_TASK
 )
+task.upload_artifact('List Models', list_models)
+task.upload_artifact('List Optimizer', ListOptimizer, preview=['Adam', 'SGD'])
+
+
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
 params.pop('PROJECT_NAME')
@@ -50,9 +48,13 @@ new_params = {
     'net': params_net
 }
 
-print('CURRENT WORKDIR:', os.getcwd())
+print('CURRENT WORKDIR:', os.getcwd(), ' && ls .')
+pprint(os.listdir(os.getcwd()))
 pprint(new_params)
 conf = override_config(new_params, conf)
+pprint(asdict(conf))
+
+
 pl.seed_everything(conf.data.random_seed)
 data_module = ImageDataModule(conf)
 model_classifier = ModelClassifier(conf)
@@ -65,7 +67,6 @@ trainer = pl.Trainer(
     logger=True,
     callbacks=[]
 )
+
 trainer.fit(model=model_classifier, datamodule=data_module)
 trainer.test(datamodule=data_module)
-
-
