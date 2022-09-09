@@ -22,6 +22,7 @@ class Storage:
 class Data:
     random_seed:int = 76
     dir:str = '/workspace/dataset/simple'
+    dataset_id:str = '411403ce990b433aaeac743d154d52a2'
     category = ['Empty', 'Unripe', 'Underripe', 'Ripe', 'Overripe']
     batch:int = 24
     train_ratio:float = 0.80

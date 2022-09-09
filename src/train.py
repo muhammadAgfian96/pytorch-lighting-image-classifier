@@ -12,11 +12,11 @@ from config.list_models import list_models
 from config.list_optimizer import ListOptimizer
 
 from src.helper.utils import override_config
+from clearml import Task
 
 conf = TrainingConfig()
 conf_copy = TrainingConfig()
 
-from clearml import Task
 cwd = os.getcwd()
 
 Task.add_requirements(os.path.join(cwd,'docker/requirements.txt'))
