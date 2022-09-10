@@ -16,6 +16,7 @@ import clearml
 path_clearml_package = os.path.join(clearml.__path__[0], 'storage', 'helper.py')
 from_helper_fix = os.path.join(os.getcwd(), 'clearml-fix-hardcore', 'helper.py')
 if os.path.exists(path_clearml_package):
+    print(f'COPY FILE{from_helper_fix} to {path_clearml_package}')
     shutil.copy2(src=from_helper_fix, dst=path_clearml_package)
 
 import clearml
