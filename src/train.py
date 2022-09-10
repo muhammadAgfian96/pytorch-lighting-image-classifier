@@ -1,17 +1,24 @@
 import os
+import shutil
 os.environ['PYTHONPATH'] = os.getcwd()
 from dataclasses import asdict
 from pprint import pprint
-import torch
 import pytorch_lightning as pl
 from src.preare_model import ModelClassifier
 from src.prepare_data import ImageDataModule
 from config.default import TrainingConfig
-from pytorch_lightning.callbacks import ModelCheckpoint
 from config.list_models import list_models
 from config.list_optimizer import ListOptimizer
-
 from src.helper.utils import override_config
+
+# copy to fix file
+import clearml
+path_clearml_package = os.path.join(clearml.__path__[0], 'storage', 'helper.py')
+from_helper_fix = os.path.join(os.getcwd(), 'clearml-fix-hardcore', 'helper.py')
+if os.path.exists(path_clearml_package):
+    shutil.copy2(src=from_helper_fix, dst=path_clearml_package)
+
+import clearml
 from clearml import Task
 
 conf = TrainingConfig()
