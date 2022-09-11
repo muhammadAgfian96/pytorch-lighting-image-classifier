@@ -4,7 +4,7 @@ pytorch-lightning==1.7.4
 opencv-python-headless==4.6.0.66
 albumentations==1.2.1
 boto3==1.24.66
-clearml
+git+https://github.com/muhammadAgfian96/clearml.git@fix-boto3driver-minio#egg=clearml
 pandas
 matplotlib
 ipython
