@@ -1,10 +1,10 @@
+boto3==1.24.66
+clearml @ git+https://github.com/muhammadAgfian96/clearml.git@81c34b8f6bec7daa1de537761797862a15eaac3a
 timm==0.6.7
 torch==1.12.1
 pytorch-lightning==1.7.4
 opencv-python-headless==4.6.0.66
 albumentations==1.2.1
-boto3==1.24.66
-clearml @ git+https://github.com/muhammadAgfian96/clearml.git@5157968f3f36b2666b81e1acd6afa649c274c36d
 pandas
 matplotlib
 ipython
