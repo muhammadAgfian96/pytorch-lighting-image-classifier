@@ -22,6 +22,13 @@ task = Task.init(
     task_name=conf.TASK_NAME,  
     task_type=conf.TYPE_TASK
 )
+Task.current_task().setup_aws_upload(
+    bucket='clearml-test',
+    region='binsho-server-2',
+    host='http://10.8.0.66:9000',
+    key="agfian_test_1",
+    secret= "clearml_secret_key_test"
+)
 Task.current_task().add_requirements(os.path.join(cwd,'docker/requirements.txt'))
 Task.current_task().set_script(
     repository='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
