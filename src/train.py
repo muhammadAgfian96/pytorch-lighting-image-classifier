@@ -26,7 +26,7 @@ Task.current_task().add_requirements(os.path.join(cwd,'docker/requirements.txt')
 Task.current_task().set_script(
     repository='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
     branch='main',
-    commit='fbbeb6c9840399a300a0cc866c81645f3ab94958',
+    commit='',
     working_dir='.',
     entry_point='src/train.py'
 )
