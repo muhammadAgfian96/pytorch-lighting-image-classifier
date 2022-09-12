@@ -1,3 +1,4 @@
+from email.mime import multipart
 import os
 os.environ['PYTHONPATH'] = os.getcwd()
 from dataclasses import asdict
@@ -27,7 +28,9 @@ Task.current_task().setup_aws_upload(
     region='binsho-server-2',
     host='10.8.0.66:9000',
     key="agfian_test_1",
-    secret= "clearml_secret_key_test"
+    secret= "clearml_secret_key_test",
+    secure=False,
+    multipart=False
 )
 Task.current_task().add_requirements(os.path.join(cwd,'docker/requirements.txt'))
 Task.current_task().set_script(
