@@ -25,7 +25,7 @@ task = Task.init(
 Task.current_task().setup_aws_upload(
     bucket='clearml-test',
     region='binsho-server-2',
-    host='http://10.8.0.66:9000',
+    host='10.8.0.66:9000',
     key="agfian_test_1",
     secret= "clearml_secret_key_test"
 )
