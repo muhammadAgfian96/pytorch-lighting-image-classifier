@@ -1,5 +1,4 @@
 import os
-import shutil
 os.environ['PYTHONPATH'] = os.getcwd()
 from dataclasses import asdict
 from pprint import pprint
@@ -18,15 +17,21 @@ conf_copy = TrainingConfig()
 
 cwd = os.getcwd()
 
-Task.add_requirements(os.path.join(cwd,'docker/requirements.txt'))
 task = Task.init(
     project_name='PL_Training',
     task_name=conf.TASK_NAME,  
     task_type=conf.TYPE_TASK
 )
+Task.current_task().add_requirements(os.path.join(cwd,'docker/requirements.txt'))
+Task.current_task().set_script(
+    repository='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
+    branch='main',
+    commit='fbbeb6c9840399a300a0cc866c81645f3ab94958',
+    working_dir='.',
+    entry_point='src/train.py'
+)
 task.upload_artifact('List Models', list_models)
 task.upload_artifact('List Optimizer', ListOptimizer, preview=['Adam', 'SGD'])
-
 
 params = asdict(conf_copy)
 params['aug'].pop('augmentor_task')
@@ -52,7 +57,6 @@ pprint(os.listdir(os.getcwd()))
 pprint(new_params)
 conf = override_config(new_params, conf)
 pprint(asdict(conf))
-
 
 pl.seed_everything(conf.data.random_seed)
 data_module = ImageDataModule(conf)
