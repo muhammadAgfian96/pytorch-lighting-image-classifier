@@ -1,5 +1,5 @@
 from config.default import TrainingConfig
-
+import os
 
 def override_config(params:dict, conf:TrainingConfig):
     conf.aug.augmentor = params['aug']['augmentor']
@@ -20,9 +20,11 @@ def override_config(params:dict, conf:TrainingConfig):
     conf.hyp.opt_momentum = params['hyp']['opt_momentum']
     conf.hyp.opt_name = params['hyp']['opt_name']
     conf.hyp.opt_weight_decay = params['hyp']['opt_weight_decay']
+    conf.hyp.precision = params['hyp']['precision']
     conf.net.architecture = params['net']['architecture']
     conf.net.checkpoint_model = params['net']['checkpoint_model']
-    conf.net.num_class = params['net']['num_class']
     conf.net.pretrained = params['net']['pretrained']
     conf.net.resume = params['net']['resume']
+    conf.net.num_class = len(os.listdir(conf.data.dir))
+    conf.data.category = sorted(os.listdir(conf.data.dir))
     return conf

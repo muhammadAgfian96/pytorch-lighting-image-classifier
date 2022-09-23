@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import List
+from unicodedata import category
 from clearml import TaskTypes
 import albumentations as al
 from albumentations.pytorch.transforms import ToTensorV2
@@ -9,7 +11,7 @@ import torch
 @dataclass
 class Config(object):
     PROJECT_NAME:str = 'bousteud'
-    TASK_NAME:str = 'maturity'
+    TASK_NAME:str = 'keep-drop'
     TYPE_TASK:Enum = TaskTypes.training
     OUTPUT_URI:str = 's3://10.8.0.66:9000/clearml-test'
 
@@ -21,9 +23,9 @@ class Storage:
 @dataclass
 class Data:
     random_seed:int = 76
-    dir:str = '/workspace/dataset/simple'
-    dataset_id:str = '411403ce990b433aaeac743d154d52a2'
-    category = ['Empty', 'Unripe', 'Underripe', 'Ripe', 'Overripe']
+    dir:str = '/workspace/current_dataset'
+    dataset_id:str = 'e6c01e3dc8644fd2943e52ee02a1e690'
+    category:List[str] = None
     batch:int = 24
     train_ratio:float = 0.80
     val_ratio:float = 0.1
@@ -135,18 +137,17 @@ class Augmentations:
 
 @dataclass
 class Model:
-    architecture:str = 'edgenext_x_small'
+    # architecture:str = 'edgenext_x_small'
+    architecture:str = 'vit_tiny_r_s16_p8_224'
     pretrained:bool = True
-    num_class:int = len(Data.category)
     resume:bool = False
     checkpoint_model:str = None
-    
     if resume:
         checkpoint_model:str = ''
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 15
+    epoch:int = 6
     learning_rate:float = 1.0e-4
     
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -154,6 +155,9 @@ class HyperParameters(object):
     opt_name:str = ListOptimizer.AdamW
     opt_weight_decay:float = 0
     opt_momentum:float = 0.9
+
+    precision: int = 16
+
 
 # scheduler
 
