@@ -110,6 +110,8 @@ trainer = pl.Trainer(
 
 trainer.fit(model=model_classifier, datamodule=data_module)
 trainer.test(datamodule=data_module)
+
+# saving upload / models
 print("checkpoint_callback.dirpath: ", checkpoint_callback.dirpath)
 output_model_best = OutputModel(task=task, name=f'best-{conf.TASK_NAME}', framework="Pytorch Lightning", comment=f"best model. dataset_id: {conf.data.dataset_id}")
 output_model_best.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
@@ -122,6 +124,5 @@ output_model_last = OutputModel(task=task, name=f'latest-{conf.TASK_NAME}', fram
 output_model_last.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
 output_model_last.update_weights(
     weights_filename=checkpoint_callback.last_model_path,
-    target_filename=f'last-{conf.TASK_NAME}-{task.id}.pt',
-    )
+    target_filename=f'last-{conf.TASK_NAME}-{task.id}.pt')
 output_model_last.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})

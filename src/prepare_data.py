@@ -107,8 +107,7 @@ class ImageDataModule(pl.LightningDataModule):
     def prepare_data(self) -> None:
         # set clearml and download the data
         try:
-            DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(
-                target_folder='/workspace/current_dataset')
+            DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
         except Exception as e:
             print(e)
 
