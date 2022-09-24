@@ -68,15 +68,18 @@ new_params = {
 print('CURRENT WORKDIR:', os.getcwd(), ' && ls .')
 print(os.listdir(os.getcwd()))
 print(new_params)
+
+pl.seed_everything(conf.data.random_seed)
+data_module = ImageDataModule(conf)
+data_module.prepare_data()
+model_classifier = ModelClassifier(conf)
+
 conf = override_config(new_params, conf)
 print(asdict(conf))
 #endregion 
 
 task.rename(conf.TASK_NAME)
 
-pl.seed_everything(conf.data.random_seed)
-data_module = ImageDataModule(conf)
-model_classifier = ModelClassifier(conf)
 
 checkpoint_callback = ModelCheckpoint(
     monitor="val_acc",

@@ -11,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from clearml import Dataset as DatasetClearML
 from config.default import TrainingConfig
+from rich import print
 
 
 def get_list_data(root_path, conf:TrainingConfig):
@@ -107,6 +108,8 @@ class ImageDataModule(pl.LightningDataModule):
     def prepare_data(self) -> None:
         # set clearml and download the data
         try:
+            os.makedirs('/workspace/current_dataset', exist_ok=True)
+            print('creted folder, downloading dataset...')
             DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
         except Exception as e:
             print(e)
