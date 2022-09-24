@@ -14,6 +14,7 @@ from config.list_models import list_models
 from config.list_optimizer import ListOptimizer
 from src.helper.utils import override_config
 from clearml import Task, OutputModel
+from clearml import Dataset as DatasetClearML
 
 conf = TrainingConfig()
 conf_copy = TrainingConfig()
@@ -69,10 +70,9 @@ print('CURRENT WORKDIR:', os.getcwd(), ' && ls .')
 print(os.listdir(os.getcwd()))
 print(new_params)
 
-pl.seed_everything(conf.data.random_seed)
-data_module = ImageDataModule(conf)
-data_module.prepare_data()
-model_classifier = ModelClassifier(conf)
+print('download data:', conf.data.dataset_id)
+DatasetClearML.get(dataset_id=conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset')
+
 
 conf = override_config(new_params, conf)
 print(asdict(conf))
@@ -80,6 +80,9 @@ print(asdict(conf))
 
 task.rename(conf.TASK_NAME)
 
+pl.seed_everything(conf.data.random_seed)
+data_module = ImageDataModule(conf)
+model_classifier = ModelClassifier(conf)
 
 checkpoint_callback = ModelCheckpoint(
     monitor="val_acc",
@@ -94,7 +97,6 @@ checkpoint_callback.CHECKPOINT_NAME_LAST = '{epoch}-{val_acc:.2f}-{val_loss:.2f}
 
 early_stop_callback = EarlyStopping(
     monitor="val_acc", min_delta=0.01, patience=4, verbose=False, mode="max", check_on_train_epoch_end=True)
-
 
 # create callbacks
 ls_callback = [

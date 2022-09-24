@@ -110,7 +110,7 @@ class ImageDataModule(pl.LightningDataModule):
         try:
             os.makedirs('/workspace/current_dataset', exist_ok=True)
             print('creted folder, downloading dataset...')
-            DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
+            DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset')
         except Exception as e:
             print(e)
 
