@@ -159,8 +159,6 @@ class ModelClassifier(pl.LightningModule):
         scores_f1 = [f1_score(preds=preds, target=labels, threshold=thresh, num_classes=self.conf.net.num_class, top_k=1).item() for thresh in threshold]
         scores_f1 = torch.tensor(scores_f1)
         idx_score_max = torch.argmax(scores_f1).item()
-        print('threshold', threshold)
-        print('scores_f1', scores_f1)
         best_threshold = threshold[idx_score_max]
         best_score = scores_f1[idx_score_max].item()
         return best_score, best_threshold
@@ -236,11 +234,15 @@ class ModelClassifier(pl.LightningModule):
         table = pd.DataFrame.from_dict({'Threshold': [best_threshold_f1], 'F1 Score': [best_score_f1]})
 
         # fig_cm_val.update_xaxes(side="top")
-        Task.current_task().get_logger().report_plotly(title='Confusion Matrix', series=section, figure=fig_cm_val, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_scalar(title='Accuracy', series=section, value=acc_epoch, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_scalar(title='Loss', series=section, value=loss_epoch, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_plotly(title='ROC & AUC', series=section, figure=fig_roc, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_scalar(title='F1 Score', series=section, value=best_score_f1, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_table(title='Tables', series=f'precision_recall_fscore_support ({section})', table_plot=df_table_support, iteration=self.current_epoch)
-        Task.current_task().get_logger().report_table(title='Tables', series=f'f1_score ({section})', table_plot=table, iteration=self.current_epoch)
-
+        if section.lower() == 'test':
+            iter_ = self.conf.hyp.epoch
+        else:
+            iter_ = self.current_epoch
+        Task.current_task().get_logger().report_scalar(title='Accuracy', series=section, value=acc_epoch, iteration=iter_)
+        Task.current_task().get_logger().report_scalar(title='Loss', series=section, value=loss_epoch, iteration=iter_)
+        Task.current_task().get_logger().report_scalar(title='F1 Score', series=section, value=best_score_f1, iteration=iter_)
+        
+        Task.current_task().get_logger().report_plotly(title='Confusion Matrix', series=section, figure=fig_cm_val, iteration=iter_)
+        Task.current_task().get_logger().report_plotly(title='ROC & AUC', series=section, figure=fig_roc, iteration=iter_)
+        Task.current_task().get_logger().report_table(title='Tables', series=f'precision_recall_fscore_support ({section})', table_plot=df_table_support, iteration=iter_)
+        Task.current_task().get_logger().report_table(title='Tables', series=f'f1_score ({section})', table_plot=table, iteration=iter_)
