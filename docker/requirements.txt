@@ -1,5 +1,5 @@
 boto3==1.24.66
-clearml @ git+https://github.com/muhammadAgfian96/clearml.git@3f4d15d15910a938e6bb76c32cbf81dc5df05827
+clearml @ git+https://github.com/muhammadAgfian96/clearml.git@01db9aa40537a6c2f83977220423556a48614c3a
 timm==0.6.7
 torch==1.12.1
 pytorch-lightning==1.7.4
