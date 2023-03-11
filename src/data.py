@@ -1,4 +1,5 @@
 import random
+import shutil
 import torch
 import pytorch_lightning as pl
 import albumentations as al
@@ -104,6 +105,8 @@ class ImageDataModule(pl.LightningDataModule):
         super().__init__()
         self.data_dir = conf.data.dir
         self.conf = conf
+        if os.path.exists('/workspace/current_dataset'):
+            shutil.rmtree('/workspace/current_dataset')
     
     def prepare_data(self) -> None:
         # set clearml and download the data

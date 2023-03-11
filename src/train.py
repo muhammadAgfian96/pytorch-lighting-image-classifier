@@ -7,8 +7,8 @@ from dataclasses import asdict
 from rich import print
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from src.preare_model import ModelClassifier
-from src.prepare_data import ImageDataModule
+from net import ModelClassifier
+from data import ImageDataModule
 from config.default import TrainingConfig
 from config.list_models import list_models
 from config.list_optimizer import ListOptimizer
@@ -118,7 +118,11 @@ trainer.test(datamodule=data_module)
 
 # saving upload / models
 print("checkpoint_callback.dirpath: ", checkpoint_callback.dirpath)
-output_model_best = OutputModel(task=task, name=f'best-{conf.TASK_NAME}', framework="Pytorch Lightning", comment=f"best model. dataset_id: {conf.data.dataset_id}")
+output_model_best = OutputModel(
+    task=task, 
+    name=f'best-{conf.TASK_NAME}', 
+    framework="Pytorch Lightning", 
+    comment=f"best model. dataset_id: {conf.data.dataset_id}")
 output_model_best.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
 output_model_best.update_weights(
     weights_filename=checkpoint_callback.best_model_path,

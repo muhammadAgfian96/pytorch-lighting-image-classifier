@@ -1,14 +1,13 @@
-boto3==1.24.66
-clearml @ git+https://github.com/muhammadAgfian96/clearml.git@01db9aa40537a6c2f83977220423556a48614c3a
-timm==0.6.7
-torch==1.12.1
-pytorch-lightning==1.7.4
-opencv-python-headless==4.6.0.66
-albumentations==1.2.1
+boto3
+clearml
+timm
+pytorch-lightning
+opencv-python-headless
+albumentations
 pandas
 matplotlib
-ipython
 tqdm
+ipython
 plotly
 nbformat
 rich

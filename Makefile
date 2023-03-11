@@ -1,7 +1,10 @@
 # .SILENT: update-config
 
-IMAGE=torch-classifier:1.12
+IMAGE=torch-classifier:latest
 CONTAINER=classifier-torch-framework 
+
+build:
+	docker build -f docker/Dockerfile -t $(IMAGE) .
 
 dev:
 	docker run -it --rm --gpus all \
