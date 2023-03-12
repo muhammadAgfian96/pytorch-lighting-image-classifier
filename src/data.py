@@ -1,5 +1,6 @@
 import random
 import shutil
+import time
 import torch
 import pytorch_lightning as pl
 import albumentations as al
@@ -9,13 +10,18 @@ from PIL import Image
 import cv2
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
+import plotly.graph_objects as go
 
-from clearml import Dataset as DatasetClearML
+from clearml import (
+    Dataset as DatasetClearML, 
+    StorageManager, 
+    Task)
 from config.default import TrainingConfig
 from rich import print
+from src.helper.data_helper import MinioDatasetDownloader
 
 
-def get_list_data(root_path, conf:TrainingConfig):
+def get_list_data(conf:TrainingConfig):
     tr = conf.data.train_ratio
     va = conf.data.val_ratio
     te = conf.data.test_ratio
@@ -52,7 +58,7 @@ def get_list_data(root_path, conf:TrainingConfig):
     }
 
 
-    classes_name = sorted(os.listdir(root_path))
+    classes_name = sorted(os.listdir(conf.data.dir))
 
     d_data = {lbl:[] for lbl in classes_name}
     ls_train = []
@@ -60,7 +66,7 @@ def get_list_data(root_path, conf:TrainingConfig):
     ls_test = []
 
     for label in classes_name:
-        fp_folder = join(root_path, label)
+        fp_folder = join(conf.data.dir, label)
         for file in os.listdir(fp_folder):
             fp_image = join(fp_folder, file)
             if check_health_img(fp_image):
@@ -82,7 +88,7 @@ def get_list_data(root_path, conf:TrainingConfig):
     d_metadata['val_count'] = len(ls_val_set)
     d_metadata['test_count'] = len(ls_test_set)
 
-    classes_name = sorted(os.listdir(root_path))
+    classes_name = sorted(os.listdir(conf.data.dir))
     return ls_train_set, ls_val_set, ls_test_set, d_metadata, classes_name
 
 class ImageDatasetBinsho(Dataset):
@@ -105,38 +111,79 @@ class ImageDataModule(pl.LightningDataModule):
         super().__init__()
         self.data_dir = conf.data.dir
         self.conf = conf
+        self.prepare_data_has_downloaded = False
+
         if os.path.exists('/workspace/current_dataset'):
             shutil.rmtree('/workspace/current_dataset')
     
     def prepare_data(self) -> None:
         # set clearml and download the data
-        try:
-            os.makedirs('/workspace/current_dataset', exist_ok=True)
-            print('creted folder, downloading dataset...')
-            DatasetClearML.get(dataset_id=self.conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset')
-        except Exception as e:
-            print(e)
+        if not self.prepare_data_has_downloaded:
+            if os.path.exists(self.conf.data.dir):
+                shutil.rmtree(self.conf.data.dir)
+            print('Downloading data...')
+            try:
+                os.makedirs(self.conf.data.dir, exist_ok=True)
+                print('creted folder, downloading dataset...', )
+                if 's3://10.8.0.66:9000' in  self.conf.data.dataset:
+                    print('single link s3', self.conf.data.dataset)
+                    downloaded_ds_s3 = StorageManager.download_folder(
+                        remote_url=self.conf.data.dataset,
+                        local_folder=self.conf.data.dir,
+                        overwrite=False
+                    )
+                    path_s3_minio = self.conf.data.dataset.split('s3://10.8.0.66:9000/')[-1]
+                    fp_local_download = os.path.join(self.conf.data.dir, path_s3_minio)
+                    for folder_name in os.listdir(fp_local_download):
+                        folder_path_source = os.path.join(fp_local_download, folder_name)
+                        if os.path.exists(folder_path_source):
+                            shutil.move(folder_path_source, os.path.join(self.conf.data.dir, folder_name))
+                    shutil.rmtree(os.path.join(self.conf.data.dir, path_s3_minio.split('/')[0]))
+
+                    print('path_downloaded:', self.conf.data.dir, downloaded_ds_s3)
+                    self.data_dir = self.conf.data.dir
+                elif type(self.conf.data.dataset) == type({}):
+                    print('download dict')
+                    s3_api = MinioDatasetDownloader(dataset=self.conf.data.dataset, download_dir='/workspace/current_dataset')
+                    start_time = time.time()
+                    s3_api.download_dataset()
+                    end_time = time.time()
+                    self.data_dir = self.conf.data.dir = '/workspace/current_dataset'
+                    duration = end_time - start_time
+                    print('how long it take :', round(duration, 3), 'seconds')
+                else:
+                    print('dataset_id is dowloading',)
+                    DatasetClearML.get(dataset_id=self.conf.data.dataset).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
+                print('success download data:', self.conf.data.dir)
+                self.prepare_data_has_downloaded = True
+                self.ls_train_set, self.ls_val_set, self.ls_test_set, self.d_metadata, self.classes_name = get_list_data(conf=self.conf)
+                print('metadata:', self.d_metadata)
+                print('classname:', self.classes_name)
+                self.__log_distribution_data_clearml(self.d_metadata)
+            except Exception as e:
+                print(e)
+                exit()
+        else:
+            print('we has_downloaded your data')
 
     def setup(self, stage: str):
-        # get list of data
-        ls_train_set, ls_val_set, ls_test_set, d_metadata, classes_name = get_list_data(root_path=self.data_dir, conf=self.conf)
-        
+        # get list of data        
         # Assign train/val datasets for use in dataloaders
         if stage == "fit":
             self.data_train = ImageDatasetBinsho(
-                ls_train_set, 
+                self.ls_train_set, 
                 transform=self.conf.aug.get_ls_train(),
-                classes=classes_name)
+                classes=self.classes_name)
             self.data_val = ImageDatasetBinsho(
-                ls_val_set, 
+                self.ls_val_set, 
                 transform=self.conf.aug.get_ls_train(),
-                classes=classes_name)
+                classes=self.classes_name)
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.data_test = ImageDatasetBinsho(
-                ls_test_set, 
+                self.ls_test_set, 
                 transform=self.conf.aug.get_ls_train(),
-                classes=classes_name)
+                classes=self.classes_name)
 
     def train_dataloader(self):
         return DataLoader(self.data_train, batch_size=self.conf.data.batch, shuffle=True)
@@ -146,3 +193,46 @@ class ImageDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(self.data_test, batch_size=self.conf.data.batch)
+    
+
+    def __log_distribution_data_clearml(self, d_metadata):
+        labels_pie = ['train', 'val', 'test']
+        values_pie = [d_metadata['train_count'], d_metadata['val_count'], d_metadata['test_count']]
+        fig_dist_train_val_test = go.Figure(data=[go.Pie(labels=labels_pie, values=values_pie)])
+
+        Task.current_task().get_logger().report_plotly(
+            title='Data Distribution Section', 
+            series='Train/Val/Test', 
+            figure=fig_dist_train_val_test, 
+            iteration=1
+        )
+        
+        Task.current_task().get_logger().report_histogram(
+            title='Data Distribution', 
+            series='Training',
+            values=[[value] for value in d_metadata['counts']['train'].values()], 
+            iteration=1, 
+            labels=list(d_metadata['counts']['train'].keys()), 
+            xaxis='Class Name', 
+            yaxis='Counts'
+        )
+
+        Task.current_task().get_logger().report_histogram(
+            title='Data Distribution', 
+            series='Validation',
+            values=[[value] for value in d_metadata['counts']['val'].values()], 
+            iteration=1, 
+            labels=list(d_metadata['counts']['val'].keys()), 
+            xaxis='Class Name', 
+            yaxis='Counts'
+        )
+
+        Task.current_task().get_logger().report_histogram(
+            title='Data Distribution', 
+            series='Testing',
+            values=[[value] for value in d_metadata['counts']['test'].values()],
+            iteration=1, 
+            labels=list(d_metadata['counts']['test'].keys()), 
+            xaxis='Class Name', 
+            yaxis='Counts'
+        )

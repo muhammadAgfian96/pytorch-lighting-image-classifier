@@ -11,3 +11,6 @@ ipython
 plotly
 nbformat
 rich
+minio
+finetuning-scheduler
+seaborn

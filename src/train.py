@@ -1,34 +1,32 @@
 import os
 import sys
-from unicodedata import category
-os.environ['PYTHONPATH'] = os.getcwd()
-sys.path.append(os.getcwd())
+
+import torch
+cwd = os.getcwd()
+os.environ['PYTHONPATH'] = cwd
+sys.path.append(cwd)
+
 from dataclasses import asdict
 from rich import print
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from net import ModelClassifier
-from data import ImageDataModule
-from config.default import TrainingConfig
-from config.list_models import list_models
-from config.list_optimizer import ListOptimizer
-from src.helper.utils import override_config
-from clearml import Task, OutputModel
+from src.net import Classifier
+from src.data import ImageDataModule
+from src.utils import read_json, read_yaml, override_config, receive_data_from_pipeline
+from clearml import Task, OutputModel, StorageManager
 from clearml import Dataset as DatasetClearML
-
-conf = TrainingConfig()
-conf_copy = TrainingConfig()
-
-#region SETUP CLEARML
-cwd = os.getcwd()
-
-Task.add_requirements(f"-r {os.path.join(cwd,'docker/requirements.txt')}")
+from config.default import TrainingConfig
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
+from finetuning_scheduler import FinetuningScheduler
+# ----------------------------------------------------------------------------------
+# ClearML Setup
+# ----------------------------------------------------------------------------------
+# Task.add_requirements(f"-r {os.path.join(cwd,'docker/requirements.txt')}")
 Task.force_requirements_env_freeze(False, os.path.join(cwd,'docker/requirements.txt'))
 
 task = Task.init(
-    project_name='Classifier/Test',
-    task_name=conf.TASK_NAME,  
-    task_type=conf.TYPE_TASK,
+    project_name='Image Classifier/Template',
+    task_name='Training',  
+    task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False
 )
 
@@ -40,18 +38,31 @@ Task.current_task().set_script(
     entry_point='src/train.py'
 )
 
+print("""
+# ----------------------------------------------------------------------------------
+# Manage Configuration
+# ----------------------------------------------------------------------------------
+""")
+# running if inside pipeline
+args_from_pipeline = {
+    'config_yaml': '',
+    'project_name': '',
+    'reports_url': '',
+    'datasets_url': '',
+    'using_pipeline': False
+}
+task.connect(args_from_pipeline, 'Config-Pipeline')
 
-task.upload_artifact('List Models', list_models)
-task.upload_artifact('List Optimizer', ListOptimizer, preview=['Adam', 'SGD'])
+inside_pipeline = args_from_pipeline['using_pipeline']
+if inside_pipeline:
+    d_config_yaml, d_datasets_json, d_report = receive_data_from_pipeline(task, args_from_pipeline)
 
-params = asdict(conf_copy)
 
+# running for single task
+conf = TrainingConfig()
+params = asdict(conf).copy()
 params['aug'].pop('augmentor_task')
-params.pop('PROJECT_NAME')
-params.pop('TASK_NAME')
-params.pop('OUTPUT_URI')
-
-params_general = task.connect({'TASK_NAME': params.get('TASK_NAME', conf.TASK_NAME)},  'General')
+params_general = task.connect(params['default'],  'Project')
 params_aug = task.connect(params['aug'], 'Augmentations')
 params_db = task.connect(params['db'], 'Database')
 params_data = task.connect(params['data'], 'Data')
@@ -59,36 +70,46 @@ params_hyp = task.connect(params['hyp'], 'Trainings')
 params_net = task.connect(params['net'], 'Models')
 
 new_params = {
-    'aug': params_aug,
-    'data': params_data,
-    'db': params_db,
-    'hyp': params_hyp,
-    'net': params_net
+    'default': params['default'],
+    'aug': params['aug'],
+    'db': params['db'],
+    'data': params['data'],
+    'hyp': params['hyp'],
+    'net': params['net']
 }
 
 print('CURRENT WORKDIR:', os.getcwd(), ' && ls .')
 print(os.listdir(os.getcwd()))
 print(new_params)
+print(params)
 
-print('download data:', conf.data.dataset_id)
-DatasetClearML.get(dataset_id=conf.data.dataset_id).get_mutable_local_copy(target_folder='/workspace/current_dataset')
-
-
+print('torch.cuda.is_available():', torch.cuda.is_available())
 conf = override_config(new_params, conf)
 print(asdict(conf))
-#endregion 
 
-task.rename(conf.TASK_NAME)
 
+task.rename(new_params['default']['TASK_NAME'])
+print("""
+# ----------------------------------------------------------------------------------
+# Prepare Data, Model, Callbacks For Training 
+# ----------------------------------------------------------------------------------
+"""
+)
 pl.seed_everything(conf.data.random_seed)
-data_module = ImageDataModule(conf)
-model_classifier = ModelClassifier(conf)
 
+print("# Data ---------------------------------------------------------------------")
+data_module = ImageDataModule(conf)
+data_module.prepare_data()
+conf.net.num_class = len(data_module.classes_name)
+conf.data.category = data_module.classes_name
+task.set_model_label_enumeration({lbl:idx for idx, lbl in enumerate(conf.data.category)})
+
+print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
     monitor="val_acc",
     mode='max',
     save_last= True,
-    save_top_k=2,
+    save_top_k=1,
     save_weights_only=True,
     verbose=True,
     filename='{epoch}-{val_acc:.2f}-{val_loss:.2f}'
@@ -96,42 +117,70 @@ checkpoint_callback = ModelCheckpoint(
 checkpoint_callback.CHECKPOINT_NAME_LAST = '{epoch}-{val_acc:.2f}-{val_loss:.2f}-last'
 
 early_stop_callback = EarlyStopping(
-    monitor="val_acc", min_delta=0.01, patience=4, verbose=False, mode="max", check_on_train_epoch_end=True)
+    monitor="val_acc", 
+    min_delta=0.01, 
+    patience=4, 
+    verbose=False, 
+    mode="max", 
+    check_on_train_epoch_end=True
+)
+lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
 # create callbacks
 ls_callback = [
     checkpoint_callback,
+    lr_monitor,
     early_stop_callback
+    # FinetuningScheduler()
 ]
 
+accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
+model_classifier = Classifier(conf)
+
+
+print("""
+# ----------------------------------------------------------------------------------
+# Training and Testing 
+# ----------------------------------------------------------------------------------
+""")
 trainer = pl.Trainer(
     max_epochs=conf.hyp.epoch,
-    accelerator='gpu', 
+    accelerator=accelerator, 
     devices=1,
     logger=True,
     callbacks=ls_callback,
     precision=conf.hyp.precision,
 )
-
+data_module.prepare_data()
+data_module.setup(stage='fit')
 trainer.fit(model=model_classifier, datamodule=data_module)
+
+data_module.setup(stage='test')
 trainer.test(datamodule=data_module)
 
-# saving upload / models
+print("""
+# ----------------------------------------------------------------------------------
+# Reporting 
+# ----------------------------------------------------------------------------------
+"""
+)
 print("checkpoint_callback.dirpath: ", checkpoint_callback.dirpath)
 output_model_best = OutputModel(
     task=task, 
-    name=f'best-{conf.TASK_NAME}', 
+    name=f'best', 
     framework="Pytorch Lightning", 
-    comment=f"best model. dataset_id: {conf.data.dataset_id}")
-output_model_best.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
+)
+# output_model_best.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
+print(checkpoint_callback.best_model_path)
+print(checkpoint_callback.last_model_path)
 output_model_best.update_weights(
     weights_filename=checkpoint_callback.best_model_path,
-    target_filename=f'best-{conf.TASK_NAME}-{task.id}.pt')
+    target_filename=f'best.ckpt')
 output_model_best.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})
 
-output_model_last = OutputModel(task=task, name=f'latest-{conf.TASK_NAME}', framework="Pytorch Lightning", comment=f"latest model. dataset_id: {conf.data.dataset_id}")
-output_model_last.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
+output_model_last = OutputModel(task=task, name=f'latest', framework="Pytorch Lightning")
+# output_model_last.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
 output_model_last.update_weights(
     weights_filename=checkpoint_callback.last_model_path,
-    target_filename=f'last-{conf.TASK_NAME}-{task.id}.pt')
+    target_filename=f'latest.ckpt')
 output_model_last.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})

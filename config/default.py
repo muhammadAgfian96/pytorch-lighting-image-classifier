@@ -1,7 +1,8 @@
-from dataclasses import dataclass, field
+import sys
+sys.path.append('..')
+from dataclasses import dataclass, field, asdict
 from enum import Enum
 from typing import List
-from unicodedata import category
 from clearml import TaskTypes
 import albumentations as al
 from albumentations.pytorch.transforms import ToTensorV2
@@ -10,7 +11,7 @@ import torch
 
 @dataclass
 class Config(object):
-    PROJECT_NAME:str = 'bousteud'
+    PROJECT_NAME:str = 'Template'
     TASK_NAME:str = 'keep-drop'
     TYPE_TASK:Enum = TaskTypes.training
     OUTPUT_URI:str = 's3://10.8.0.66:9000/clearml-test'
@@ -24,7 +25,7 @@ class Storage:
 class Data:
     random_seed:int = 76
     dir:str = '/workspace/current_dataset'
-    dataset_id:str = 'e6c01e3dc8644fd2943e52ee02a1e690'
+    dataset:str = 's3://10.8.0.66:9000/app-data-workflow/dataset-dev/Bousteud/feedback-Bousteud-2023-02-26_keep-drop/keep-drop'
     category:List[str] = None
     batch:int = 24
     train_ratio:float = 0.80
@@ -138,8 +139,9 @@ class Augmentations:
 @dataclass
 class Model:
     # architecture:str = 'edgenext_x_small'
-    architecture:str = 'vit_tiny_r_s16_p8_224'
+    architecture:str = 'mobilevitv2_200'
     pretrained:bool = True
+    dropout:float = 0.0
     resume:bool = False
     checkpoint_model:str = None
     if resume:
@@ -147,8 +149,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 6
-    learning_rate:float = 1.0e-4
+    epoch:int = 10
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer
@@ -156,15 +157,30 @@ class HyperParameters(object):
     opt_weight_decay:float = 0
     opt_momentum:float = 0.9
 
+    # scheduler lr
+    base_learning_rate:float = 1.0e-3
+    lr_scheduler:str = 'reduce_on_plateau' # step/multistep/reduce_on_plateau
+    lr_step_size:int = 7
+    lr_decay_rate:float = 0.5
+    # lr_step_milestones:List[int] = [10, 15]
     precision: int = 16
 
 
 # scheduler
 
 @dataclass
-class TrainingConfig(Config):
+class TrainingConfig():
+    default:object = Config()
     db:object = Storage()
     data:object = Data()
     aug:object = Augmentations()
     net:object =  Model()
     hyp:object = HyperParameters()
+
+
+if __name__ == '__main__':
+
+    from rich import print
+
+    my_conf = TrainingConfig()
+    print(asdict(my_conf))
