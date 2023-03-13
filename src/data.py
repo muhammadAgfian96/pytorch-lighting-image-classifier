@@ -258,24 +258,30 @@ class ImageDataModule(pl.LightningDataModule):
         ls_url_files_train = []
         # get/download list-data
         for path_dataset in datasets_yaml['dataset-train']:
-            if 's3://10.8.0.66:9000' not in path_dataset: remote_url = os.path.join('s3://10.8.0.66:9000', path_dataset)
-            else: remote_url = path_dataset
+            if 's3://10.8.0.66:9000' not in path_dataset: 
+                remote_url = os.path.join('s3://10.8.0.66:9000', path_dataset)
+            else: 
+                remote_url = path_dataset
+            print('<remote_url>', remote_url)
 
             ls_files = StorageManager.list(
                 remote_url=remote_url,
                 return_full_path=True,
                 with_metadata=True
             )
-            print('Total Data:', len(ls_files), ls_files[0])
+            print('\tTotal Data:', len(ls_files))
+            if len(ls_files) == 0:
+                print('CHECK THIS DATA')
             ls_url_files_train.extend(ls_files)
             ls_files = None
+            print('-----')
         
         d_train = {}
+        print('get_files..')
         for d_file in ls_url_files_train:
             url_file = d_file['name']
             class_name  = url_file.split('/')[-2]
             if class_name not in d_train.keys():
                 d_train[class_name] = []
             d_train[class_name].append(url_file)
-        print('Done')
         return d_train
