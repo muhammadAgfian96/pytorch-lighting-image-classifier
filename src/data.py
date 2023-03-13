@@ -82,8 +82,8 @@ def get_list_data(conf:TrainingConfig):
         ls_val_set.extend(ls_val)
         ls_test_set.extend(ls_test)
         d_metadata['counts']['train'][key] = len(ls_train)
-        d_metadata['counts']['val'][key] = len(ls_train)
-        d_metadata['counts']['test'][key] = len(ls_train)
+        d_metadata['counts']['val'][key] = len(ls_val)
+        d_metadata['counts']['test'][key] = len(ls_test)
 
     d_metadata['train_count'] = len(ls_train_set)
     d_metadata['val_count'] = len(ls_val_set)
@@ -272,6 +272,7 @@ class ImageDataModule(pl.LightningDataModule):
             print('\tTotal Data:', len(ls_files))
             if len(ls_files) == 0:
                 print('CHECK THIS DATA')
+                continue
             ls_url_files_train.extend(ls_files)
             ls_files = None
             print('-----')
