@@ -89,3 +89,7 @@ def read_json(json_path:str) -> dict:
         file_contents = file.read()        
         d = json.loads(file_contents)
     return d
+
+if __name__ == '__main__':
+    path_yaml = '../config/datasets.yaml'
+    print(read_yaml(path_yaml))

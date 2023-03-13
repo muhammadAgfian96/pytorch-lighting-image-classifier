@@ -25,7 +25,7 @@ class Storage:
 class Data:
     random_seed:int = 76
     dir:str = '/workspace/current_dataset'
-    dataset:str = 's3://10.8.0.66:9000/app-data-workflow/dataset-dev/Bousteud/feedback-Bousteud-2023-02-26_keep-drop/keep-drop'
+    dataset:str = 'datasets.yaml'
     category:List[str] = None
     batch:int = 24
     train_ratio:float = 0.80

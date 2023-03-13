@@ -19,6 +19,7 @@ from clearml import (
 from config.default import TrainingConfig
 from rich import print
 from src.helper.data_helper import MinioDatasetDownloader
+from src.utils import read_yaml
 
 
 def get_list_data(conf:TrainingConfig):
@@ -151,6 +152,16 @@ class ImageDataModule(pl.LightningDataModule):
                     self.data_dir = self.conf.data.dir = '/workspace/current_dataset'
                     duration = end_time - start_time
                     print('how long it take :', round(duration, 3), 'seconds')
+                elif self.conf.data.dataset == 'datasets.yaml':
+                    d_train = self.__extract_list_link_dataset_yaml()
+                    print('test',d_train.keys())
+                    s3_api = MinioDatasetDownloader(dataset=d_train, download_dir='/workspace/current_dataset')
+                    start_time = time.time()
+                    s3_api.download_dataset()
+                    end_time = time.time()
+                    self.data_dir = self.conf.data.dir = '/workspace/current_dataset'
+                    duration = end_time - start_time
+                    print('how long it take dataset.yaml :', round(duration, 3), 'seconds')
                 else:
                     print('dataset_id is dowloading',)
                     DatasetClearML.get(dataset_id=self.conf.data.dataset).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
@@ -162,6 +173,7 @@ class ImageDataModule(pl.LightningDataModule):
                 self.__log_distribution_data_clearml(self.d_metadata)
             except Exception as e:
                 print(e)
+                print('out')
                 exit()
         else:
             print('we has_downloaded your data')
@@ -194,7 +206,6 @@ class ImageDataModule(pl.LightningDataModule):
     def test_dataloader(self):
         return DataLoader(self.data_test, batch_size=self.conf.data.batch)
     
-
     def __log_distribution_data_clearml(self, d_metadata):
         labels_pie = ['train', 'val', 'test']
         values_pie = [d_metadata['train_count'], d_metadata['val_count'], d_metadata['test_count']]
@@ -236,3 +247,35 @@ class ImageDataModule(pl.LightningDataModule):
             xaxis='Class Name', 
             yaxis='Counts'
         )
+
+    def __extract_list_link_dataset_yaml(self):
+        path_yaml_config = '/workspace/config/datasets.yaml'
+        path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
+        print('path_yaml_config:', path_yaml_config)
+        datasets_yaml = read_yaml(path_yaml_config)
+        print(datasets_yaml)
+
+        ls_url_files_train = []
+        # get/download list-data
+        for path_dataset in datasets_yaml['dataset-train']:
+            if 's3://10.8.0.66:9000' not in path_dataset: remote_url = os.path.join('s3://10.8.0.66:9000', path_dataset)
+            else: remote_url = path_dataset
+
+            ls_files = StorageManager.list(
+                remote_url=remote_url,
+                return_full_path=True,
+                with_metadata=True
+            )
+            print('Total Data:', len(ls_files), ls_files[0])
+            ls_url_files_train.extend(ls_files)
+            ls_files = None
+        
+        d_train = {}
+        for d_file in ls_url_files_train:
+            url_file = d_file['name']
+            class_name  = url_file.split('/')[-2]
+            if class_name not in d_train.keys():
+                d_train[class_name] = []
+            d_train[class_name].append(url_file)
+        print('Done')
+        return d_train

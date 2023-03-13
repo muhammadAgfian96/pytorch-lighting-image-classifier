@@ -3,14 +3,14 @@ from concurrent.futures import ThreadPoolExecutor
 import shutil
 from minio import Minio
 class MinioDatasetDownloader:
-    def __init__(self,dataset, download_dir):
-        self.endpoint="10.8.0.66:9000",
-        self.access_key="bs_server_1",
-        self.secret_key="zNAYleEDeCnlzaXJsd7MvXnQhPmZehIA",
+    def __init__(self, dataset, download_dir):
+        self.endpoint="10.8.0.66:9000"
+        self.access_key="bs_server_1"
+        self.secret_key="zNAYleEDeCnlzaXJsd7MvXnQhPmZehIA"
         self.bucket_name="app-data-workflow"
         self.region = 'binsho-server-2'
         self.dataset = dataset
-        self.download_dir = '/workspace/current_dataset'
+        self.download_dir = download_dir
 
         # Create a Minio client with the given credentials
         self.minio_client = Minio(
@@ -53,10 +53,10 @@ class MinioDatasetDownloader:
 
 if __name__ == '__main__':
     downloader = MinioDatasetDownloader(
-        endpoint="10.8.0.66:9000",
-        access_key="bs_server_1",
-        secret_key="zNAYleEDeCnlzaXJsd7MvXnQhPmZehIA",
-        bucket_name="app-data-workflow",
+        # endpoint="10.8.0.66:9000",
+        # access_key="bs_server_1",
+        # secret_key="zNAYleEDeCnlzaXJsd7MvXnQhPmZehIA",
+        # bucket_name="app-data-workflow",
         dataset={
                 "Empty": [
                     "s3://10.8.0.66:9000/app-data-workflow/dataset/Bousteud/val-stiched-named-revised/maturity/Empty/day4_part2_set11_flip_20220718150758_8ac9e9e4af33482d82561083d33555ff.jpg",
