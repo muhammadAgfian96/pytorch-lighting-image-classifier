@@ -37,7 +37,11 @@ Task.current_task().set_script(
     working_dir='.',
     entry_point='src/train.py'
 )
-
+Task.current_task().set_base_docker(
+    docker_image='pytorch/pytorch:latest',
+    docker_arguments= ['--ipc=host', '--gpus all', '-e PYTHONPATH=/workspace'],
+    docker_setup_bash_script=['apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx libsm6 libxext6 libxrender-dev']
+)
 print("""
 # ----------------------------------------------------------------------------------
 # Manage Configuration
