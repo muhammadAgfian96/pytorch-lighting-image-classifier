@@ -27,7 +27,7 @@ class Data:
     dir:str = '/workspace/current_dataset'
     dataset:str = 'datasets.yaml'
     category:List[str] = None
-    batch:int = 24
+    batch:int = 42
     train_ratio:float = 0.80
     val_ratio:float = 0.1
     test_ratio:float = 0.1
@@ -139,7 +139,7 @@ class Augmentations:
 @dataclass
 class Model:
     # architecture:str = 'edgenext_x_small'
-    architecture:str = 'mobilevitv2_200'
+    architecture:str = 'edgenext_x_small'
     pretrained:bool = True
     dropout:float = 0.0
     resume:bool = False
@@ -149,7 +149,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 10
+    epoch:int = 30
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer
