@@ -15,8 +15,10 @@ from src.utils import read_json, read_yaml, override_config, receive_data_from_p
 from clearml import Task, OutputModel, StorageManager
 from clearml import Dataset as DatasetClearML
 from config.default import TrainingConfig
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 from finetuning_scheduler import FinetuningScheduler
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
+from pytorch_lightning.tuner import tuning
+
 # ----------------------------------------------------------------------------------
 # ClearML Setup
 # ----------------------------------------------------------------------------------
@@ -148,16 +150,18 @@ print("""
 # ----------------------------------------------------------------------------------
 """)
 trainer = pl.Trainer(
+    auto_scale_batch_size=True,
     max_epochs=conf.hyp.epoch,
     accelerator=accelerator, 
     devices=1,
     logger=True,
     callbacks=ls_callback,
     precision=conf.hyp.precision,
-    auto_scale_batch_size=True
+    auto_lr_find=True,
+    log_every_n_steps=4
 )
-data_module.prepare_data()
 data_module.setup(stage='fit')
+trainer.tune(model=model_classifier, datamodule=data_module)
 trainer.fit(model=model_classifier, datamodule=data_module)
 
 data_module.setup(stage='test')

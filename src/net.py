@@ -96,6 +96,7 @@ class Classifier(pl.LightningModule):
         self.auroc = AUROC(task=self.task_accuracy, num_classes=num_class)
         self.cm = ConfusionMatrix(task=self.task_accuracy, num_classes=num_class)
 
+        self.learning_rate = self.conf.hyp.base_learning_rate
         self.save_hyperparameters({
             'net': conf.net,
             'data': conf.data,
@@ -108,14 +109,14 @@ class Classifier(pl.LightningModule):
     
     def configure_optimizers(self):
         opt_d = {
-            'Adam': optim.Adam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'SGD': optim.SGD(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'AdamW': optim.AdamW(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'RMSprop': optim.RMSprop(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'Nadam': optim.NAdam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'Adadelta': optim.Adadelta(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'Adagrad': optim.Adagrad(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
-            'Adamax': optim.Adamax(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
+            'Adam': optim.Adam(self.model.parameters(), lr=self.learning_rate),
+            'SGD': optim.SGD(self.model.parameters(), lr=self.learning_rate),
+            'AdamW': optim.AdamW(self.model.parameters(), lr=self.learning_rate),
+            'RMSprop': optim.RMSprop(self.model.parameters(), lr=self.learning_rate),
+            'Nadam': optim.NAdam(self.model.parameters(), lr=self.learning_rate),
+            'Adadelta': optim.Adadelta(self.model.parameters(), lr=self.learning_rate),
+            'Adagrad': optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
+            'Adamax': optim.Adamax(self.model.parameters(), lr=self.learning_rate),
         }
 
         optimizer = opt_d.get(self.conf.hyp.opt_name, optim.Adam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate))
@@ -261,7 +262,9 @@ class Classifier(pl.LightningModule):
         clsifier_report = precision_recall_fscore_support(
             y_true=ls_label, 
             y_pred=ls_pred, 
-            labels=self.classes_name)
+            labels=self.classes_name,
+            average='macro',
+            zero_division=1.0)
 
         d_precision_recall_fbeta_support = {
             'class': self.classes_name,

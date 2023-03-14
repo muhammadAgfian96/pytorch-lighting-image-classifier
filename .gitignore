@@ -3,3 +3,5 @@ clearml.conf
 dataset
 **__pycache__**
 **dataset**
+*.pt
+*.ckpt
