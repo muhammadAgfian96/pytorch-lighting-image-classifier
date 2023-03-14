@@ -154,6 +154,7 @@ trainer = pl.Trainer(
     logger=True,
     callbacks=ls_callback,
     precision=conf.hyp.precision,
+    auto_scale_batch_size=True
 )
 data_module.prepare_data()
 data_module.setup(stage='fit')

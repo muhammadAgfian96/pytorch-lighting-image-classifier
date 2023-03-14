@@ -217,37 +217,34 @@ class ImageDataModule(pl.LightningDataModule):
             figure=fig_dist_train_val_test, 
             iteration=1
         )
-        
-        Task.current_task().get_logger().report_histogram(
-            title='Data Distribution', 
-            series='Training',
-            values=[[value] for value in d_metadata['counts']['train'].values()], 
-            iteration=1, 
-            labels=list(d_metadata['counts']['train'].keys()), 
-            xaxis='Class Name', 
-            yaxis='Counts'
-        )
 
-        Task.current_task().get_logger().report_histogram(
-            title='Data Distribution', 
-            series='Validation',
-            values=[[value] for value in d_metadata['counts']['val'].values()], 
-            iteration=1, 
-            labels=list(d_metadata['counts']['val'].keys()), 
-            xaxis='Class Name', 
-            yaxis='Counts'
-        )
+        # Sample data
+        x_values = [value for value in d_metadata['counts']['train'].keys()]
+        y_train = [value for value in d_metadata['counts']['train'].values()]
+        y_test = [value for value in d_metadata['counts']['val'].values()]
+        y_val = [value for value in d_metadata['counts']['test'].values()]
 
-        Task.current_task().get_logger().report_histogram(
-            title='Data Distribution', 
-            series='Testing',
-            values=[[value] for value in d_metadata['counts']['test'].values()],
-            iteration=1, 
-            labels=list(d_metadata['counts']['test'].keys()), 
-            xaxis='Class Name', 
-            yaxis='Counts'
-        )
+        # Create three bar chart traces, one for each section
+        trace1 = go.Bar(x=x_values, y=y_train, name='Train', text=y_train, textposition='auto', marker=dict(color='#1f77b4'))
+        trace2 = go.Bar(x=x_values, y=y_val, name='Validation', text=y_val, textposition='auto', marker=dict(color='#2ca02c'))
+        trace3 = go.Bar(x=x_values, y=y_test, name='Test', text=y_test, textposition='auto', marker=dict(color='#ff7f0e'))
 
+        # Create a layout for the chart
+        layout = go.Layout(title='Data Distribution', xaxis=dict(title='Class Name', showticklabels=True), yaxis=dict(title='Counts', showticklabels=True), barmode='group', legend=dict(x=0, y=1))
+
+        # Create a figure object that contains the traces and layout
+        fig_bar_class = go.Figure(data=[trace1, trace2, trace3], layout=layout)
+
+        # Update the font and background colors of the chart
+        fig_bar_class.update_layout(font=dict(color='white'), plot_bgcolor='#2c3e50', paper_bgcolor='#2c3e50')
+
+
+        Task.current_task().get_logger().report_plotly(
+            title='Data Distribution Section', 
+            series='Class View', 
+            figure=fig_bar_class, 
+            iteration=1
+        )
     def __extract_list_link_dataset_yaml(self):
         path_yaml_config = '/workspace/config/datasets.yaml'
         path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
