@@ -75,6 +75,7 @@ params_data = task.connect(params['data'], 'Data')
 params_hyp = task.connect(params['hyp'], 'Trainings')
 params_net = task.connect(params['net'], 'Models')
 
+
 new_params = {
     'default': params['default'],
     'aug': params['aug'],
@@ -93,6 +94,10 @@ print('torch.cuda.is_available():', torch.cuda.is_available())
 conf = override_config(new_params, conf)
 print(asdict(conf))
 
+path_yaml_config = '/workspace/config/datasets.yaml'
+path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
+Task.current_task().execute_remotely()
+
 
 task.rename(new_params['default']['TASK_NAME'])
 print("""
@@ -104,7 +109,7 @@ print("""
 pl.seed_everything(conf.data.random_seed)
 
 print("# Data ---------------------------------------------------------------------")
-data_module = ImageDataModule(conf)
+data_module = ImageDataModule(conf=conf, path_yaml_data=path_yaml_config)
 data_module.prepare_data()
 conf.net.num_class = len(data_module.classes_name)
 conf.data.category = data_module.classes_name
@@ -149,15 +154,24 @@ print("""
 # Training and Testing 
 # ----------------------------------------------------------------------------------
 """)
+      
+auto_batch = False
+auto_lr_find = False
+if conf.data.batch == -1:
+    auto_batch = True
+if conf.hyp.base_learning_rate == -1:
+    auto_lr_find = True
+
 trainer = pl.Trainer(
-    auto_scale_batch_size=True,
+    max_steps=-1,
     max_epochs=conf.hyp.epoch,
     accelerator=accelerator, 
     devices=1,
     logger=True,
     callbacks=ls_callback,
     precision=conf.hyp.precision,
-    auto_lr_find=True,
+    auto_scale_batch_size=auto_batch,
+    auto_lr_find=auto_lr_find,
     log_every_n_steps=4
 )
 data_module.setup(stage='fit')

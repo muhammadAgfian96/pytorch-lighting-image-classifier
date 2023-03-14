@@ -108,12 +108,13 @@ class ImageDatasetBinsho(Dataset):
         return x_image, y_label
 
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, conf:TrainingConfig):
+    def __init__(self, conf:TrainingConfig, path_yaml_data=None):
         super().__init__()
         self.data_dir = conf.data.dir
         self.conf = conf
         self.prepare_data_has_downloaded = False
         self.batch_size = self.conf.data.batch
+        self.path_yaml_dataset = path_yaml_data
 
         if os.path.exists('/workspace/current_dataset'):
             shutil.rmtree('/workspace/current_dataset')
@@ -248,10 +249,8 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
     def __extract_list_link_dataset_yaml(self):
-        path_yaml_config = '/workspace/config/datasets.yaml'
-        path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
-        print('path_yaml_config:', path_yaml_config)
-        datasets_yaml = read_yaml(path_yaml_config)
+        print('path_yaml_config:', self.path_yaml_dataset)
+        datasets_yaml = read_yaml(self.path_yaml_dataset)
         print(datasets_yaml)
 
         ls_url_files_train = []

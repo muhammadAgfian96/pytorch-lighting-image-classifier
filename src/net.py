@@ -222,6 +222,7 @@ class Classifier(pl.LightningModule):
             index=[lbl+'_gt' for lbl in self.classes_name], 
             columns=[lbl+'_pd' for lbl in self.classes_name]
         )
+        print()
         print(df_cm)
         fig_cm_val = px.imshow(df_cm, text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
         return fig_cm_val
