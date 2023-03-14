@@ -31,7 +31,7 @@ task = Task.init(
     task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False
 )
-
+Task.add_requirements('docker/requirements.txt')
 Task.current_task().set_script(
     repository='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
     branch='main',
