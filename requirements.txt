@@ -1,0 +1,16 @@
+boto3
+clearml
+timm
+pytorch-lightning
+opencv-python-headless
+albumentations
+pandas
+matplotlib
+tqdm
+ipython
+plotly
+nbformat
+rich
+minio
+finetuning-scheduler
+seaborn
