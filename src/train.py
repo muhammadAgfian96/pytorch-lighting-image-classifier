@@ -36,6 +36,7 @@ Task.current_task().set_script(
     working_dir='.',
     entry_point='src/train.py'
 )
+Task.current_task().set_packages(packages='/workspace/requirements.txt')
 Task.current_task().set_base_docker(
     docker_image='pytorch/pytorch:latest',
     docker_arguments= ['--ipc=host', '--gpus=all', '-e PYTHONPATH=/workspace'],
