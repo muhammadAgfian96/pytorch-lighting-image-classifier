@@ -28,7 +28,8 @@ task = Task.init(
     project_name='Image Classifier/Template',
     task_name='Template Classifier',  
     task_type=Task.TaskTypes.training,
-    auto_connect_frameworks=False
+    auto_connect_frameworks=False,
+    tags=['template']
 )
 Task.current_task().set_script(
     repository='https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git',
@@ -143,6 +144,17 @@ ls_callback = [
     # early_stop_callback
     # FinetuningScheduler()
 ]
+      
+auto_batch = False
+auto_lr_find = False
+if conf.data.batch == -1:
+    auto_batch = True
+    conf.data.batch = 4
+    print('USING AUTO_BATCH')
+if conf.hyp.base_learning_rate == -1:
+    conf.hyp.base_learning_rate = 0.001
+    auto_lr_find = True
+    print('USING AUTO_LR_FIND')
 
 accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
 model_classifier = Classifier(conf)
@@ -153,15 +165,7 @@ print("""
 # Training and Testing 
 # ----------------------------------------------------------------------------------
 """)
-      
-auto_batch = False
-auto_lr_find = False
-if conf.data.batch == -1:
-    auto_batch = True
-    print('USING AUTO_BATCH')
-if conf.hyp.base_learning_rate == -1:
-    auto_lr_find = True
-    print('USING AUTO_LR_FIND')
+
 
 trainer = pl.Trainer(
     max_steps=-1,
