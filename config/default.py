@@ -27,7 +27,7 @@ class Data:
     dir:str = '/workspace/current_dataset'
     dataset:str = 'datasets.yaml'
     category:List[str] = None
-    batch:int = 42
+    batch:int = -1
     train_ratio:float = 0.80
     val_ratio:float = 0.1
     test_ratio:float = 0.1
