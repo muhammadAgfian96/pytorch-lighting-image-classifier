@@ -96,7 +96,7 @@ print(asdict(conf))
 
 path_yaml_config = '/workspace/config/datasets.yaml'
 path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
-Task.current_task().execute_remotely()
+# Task.current_task().execute_remotely()
 
 
 task.rename(new_params['default']['TASK_NAME'])
@@ -108,7 +108,18 @@ print("""
 )
 pl.seed_everything(conf.data.random_seed)
 
-print("# Data ---------------------------------------------------------------------")
+print("# Data ---------------------------------------------------------------------")  
+auto_batch = False
+auto_lr_find = False
+if conf.data.batch == -1:
+    auto_batch = True
+    conf.data.batch = 4
+    print('USING AUTO_BATCH')
+if conf.hyp.base_learning_rate == -1:
+    conf.hyp.base_learning_rate = 0.001
+    auto_lr_find = True
+    print('USING AUTO_LR_FIND')
+
 data_module = ImageDataModule(conf=conf, path_yaml_data=path_yaml_config)
 data_module.prepare_data()
 conf.net.num_class = len(data_module.classes_name)
@@ -144,17 +155,7 @@ ls_callback = [
     # early_stop_callback
     # FinetuningScheduler()
 ]
-      
-auto_batch = False
-auto_lr_find = False
-if conf.data.batch == -1:
-    auto_batch = True
-    conf.data.batch = 4
-    print('USING AUTO_BATCH')
-if conf.hyp.base_learning_rate == -1:
-    conf.hyp.base_learning_rate = 0.001
-    auto_lr_find = True
-    print('USING AUTO_LR_FIND')
+
 
 accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
 model_classifier = Classifier(conf)
