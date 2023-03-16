@@ -24,7 +24,6 @@ from pytorch_lightning.tuner import tuning
 # ----------------------------------------------------------------------------------
 # Task.add_requirements(f"-r {os.path.join(cwd,'docker/requirements.txt')}")
 Task.force_requirements_env_freeze(False, '/workspace/requirements.txt')
-
 task = Task.init(
     project_name='Image Classifier/Template',
     task_name='Template Classifier',  
@@ -157,8 +156,10 @@ auto_batch = False
 auto_lr_find = False
 if conf.data.batch == -1:
     auto_batch = True
+    print('USING AUTO_BATCH')
 if conf.hyp.base_learning_rate == -1:
     auto_lr_find = True
+    print('USING AUTO_LR_FIND')
 
 trainer = pl.Trainer(
     max_steps=-1,
