@@ -29,6 +29,7 @@ from clearml import Task
 import plotly.graph_objects as go
 import plotly.express as px
 from rich import print
+from dataclasses import asdict
 
 
 def get_lr_scheduler_config(optimizer: torch.optim.Optimizer, 
@@ -97,10 +98,20 @@ class Classifier(pl.LightningModule):
         self.cm = ConfusionMatrix(task=self.task_accuracy, num_classes=num_class)
 
         self.learning_rate = self.conf.hyp.base_learning_rate
+        d_hyp = asdict(self.conf.hyp)
         self.save_hyperparameters({
-            'net': conf.net,
-            'data': conf.data,
-            'hyp': conf.hyp
+            'net': {
+                'architecture': self.conf.net.architecture,
+                'dropout': self.conf.net.dropout,
+                'num_class': len(self.classes_name),
+                'labels': self.classes_name,
+            },
+            'preprocessing': {
+                'input_size': self.conf.data.input_size,
+                'mean': self.conf.data.mean,
+                'std': self.conf.data.std,
+            },
+            'hyperparameters': d_hyp
         })
 
     def forward(self, imgs):
@@ -222,8 +233,6 @@ class Classifier(pl.LightningModule):
             index=[lbl+'_gt' for lbl in self.classes_name], 
             columns=[lbl+'_pd' for lbl in self.classes_name]
         )
-        print()
-        print(df_cm)
         fig_cm_val = px.imshow(df_cm, text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
         return fig_cm_val
 
