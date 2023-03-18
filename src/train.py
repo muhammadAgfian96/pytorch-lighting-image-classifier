@@ -96,10 +96,11 @@ print(asdict(conf))
 
 path_yaml_config = '/workspace/config/datasets.yaml'
 path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
-# Task.current_task().execute_remotely()
+Task.current_task().execute_remotely()
 
 
 task.rename(new_params['default']['TASK_NAME'])
+task.set_tags('training')
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 

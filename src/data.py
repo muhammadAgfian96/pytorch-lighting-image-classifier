@@ -190,13 +190,13 @@ class ImageDataModule(pl.LightningDataModule):
                 classes=self.classes_name)
             self.data_val = ImageDatasetBinsho(
                 self.ls_val_set, 
-                transform=self.conf.aug.get_ls_train(),
+                transform=self.conf.aug.get_ls_val(),
                 classes=self.classes_name)
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.data_test = ImageDatasetBinsho(
                 self.ls_test_set, 
-                transform=self.conf.aug.get_ls_train(),
+                transform=self.conf.aug.get_ls_val(),
                 classes=self.classes_name)
 
     def train_dataloader(self):
