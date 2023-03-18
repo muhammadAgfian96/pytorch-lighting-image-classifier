@@ -100,7 +100,7 @@ Task.current_task().execute_remotely()
 
 
 task.rename(new_params['default']['TASK_NAME'])
-task.set_tags('training')
+task.set_tags(['training'])
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
