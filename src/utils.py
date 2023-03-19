@@ -2,7 +2,26 @@ from clearml import StorageManager, Task
 from config.default import TrainingConfig
 import yaml
 import json
-from botocore.client import Config
+from clearml import Task, OutputModel, StorageManager
+import os
+
+def export_upload_model(conf, path_weights, name_upload, framework):
+    try:
+        print(f'Uploading {name_upload}-{framework} >>>'.upper())
+        output_model = OutputModel(
+            task=Task.current_task(), 
+            name=name_upload, 
+            framework=framework, 
+        )
+        extenstion = os.path.basename(path_weights).split('.')[-1]
+        output_model.update_weights(
+            weights_filename=path_weights,
+            target_filename=f'{name_upload}-{conf.net.architecture}.{extenstion}' # it will name output
+        )
+        output_model.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})
+    except Exception as e:
+        print(f'Error Upload {name_upload}-{framework}'.upper(), e)
+
 
 def receive_data_from_pipeline(args_from_pipeline):
     path_config_yaml = StorageManager.download_file(remote_url=args_from_pipeline['config_yaml'], local_folder='./tmp', overwrite=True)

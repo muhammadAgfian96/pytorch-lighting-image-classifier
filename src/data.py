@@ -20,7 +20,7 @@ from config.default import TrainingConfig
 from rich import print
 from src.helper.data_helper import MinioDatasetDownloader
 from src.utils import read_yaml
-
+import matplotlib.pyplot as plt
 
 def get_list_data(conf:TrainingConfig):
     tr = conf.data.train_ratio
@@ -62,9 +62,7 @@ def get_list_data(conf:TrainingConfig):
     classes_name = sorted(os.listdir(conf.data.dir))
 
     d_data = {lbl:[] for lbl in classes_name}
-    ls_train = []
-    ls_val = []
-    ls_test = []
+    ls_train, ls_val, ls_test  = [], [], []
 
     for label in classes_name:
         fp_folder = join(conf.data.dir, label)
@@ -90,7 +88,7 @@ def get_list_data(conf:TrainingConfig):
     d_metadata['test_count'] = len(ls_test_set)
 
     classes_name = sorted(os.listdir(conf.data.dir))
-    return ls_train_set, ls_val_set, ls_test_set, d_metadata, classes_name
+    return d_data, ls_train_set, ls_val_set, ls_test_set, d_metadata, classes_name
 
 class ImageDatasetBinsho(Dataset):
     def __init__(self, data, transform, classes):
@@ -169,7 +167,7 @@ class ImageDataModule(pl.LightningDataModule):
                     DatasetClearML.get(dataset_id=self.conf.data.dataset).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
                 print('success download data:', self.conf.data.dir)
                 self.prepare_data_has_downloaded = True
-                self.ls_train_set, self.ls_val_set, self.ls_test_set, self.d_metadata, self.classes_name = get_list_data(conf=self.conf)
+                self.ddata_by_label, self.ls_train_set, self.ls_val_set, self.ls_test_set, self.d_metadata, self.classes_name = get_list_data(conf=self.conf)
                 print('metadata:', self.d_metadata)
                 print('classname:', self.classes_name)
                 self.__log_distribution_data_clearml(self.d_metadata)
@@ -275,6 +273,8 @@ class ImageDataModule(pl.LightningDataModule):
             ls_files = None
             print('-----')
         
+        # datasets_yaml.get('dataset-test', False)
+        
         d_train = {}
         print('get_files..')
         for d_file in ls_url_files_train:
@@ -284,3 +284,41 @@ class ImageDataModule(pl.LightningDataModule):
                 d_train[class_name] = []
             d_train[class_name].append(url_file)
         return d_train
+    
+
+    def __revert_transforms(self, tensor, mean, std):
+        # Convert the tensor to a NumPy array and transpose from CHW to HWC format
+        image_np = tensor.numpy().transpose(1, 2, 0)
+
+        # Denormalize the pixel values
+        image_np = (image_np * std) + mean
+
+        # Convert the float values to uint8
+        image_np = (image_np * 255).astype(np.uint8)
+
+        return image_np
+
+    def visualize_augmented_images(self, section:str, num_images=5):
+        print(f'vizualizing sample {section}...')
+        ls_viz_data = []
+        for label, ls_fp_image in self.ddata_by_label.items():
+            ls_viz_data.extend(ls_fp_image[0:num_images])
+
+        if 'train' in section:
+            dataset_viz = ImageDatasetBinsho(
+                ls_viz_data, 
+                transform=self.conf.aug.get_ls_train()[:-2],
+                classes=self.classes_name)
+        if 'val' in section or 'test' in section:
+            dataset_viz = ImageDatasetBinsho(
+                ls_viz_data, 
+                transform=self.conf.aug.get_ls_val()[:-2],
+                classes=self.classes_name)
+
+
+        for i in range(len(ls_viz_data)):
+            image_array, label = dataset_viz[i]
+            label_name = self.classes_name[label]
+            # img_np = self.__revert_transforms(tensor=image, mean=self.conf.aug.mean, std=self.conf.aug.std)
+            Task.current_task().get_logger().report_image(f"{section}", f"{label_name}_{i}", iteration=1, image=image_array)
+

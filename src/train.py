@@ -1,23 +1,19 @@
 import os
 import sys
-
-import torch
 cwd = os.getcwd()
 os.environ['PYTHONPATH'] = cwd
 sys.path.append(cwd)
 
+import torch
 from dataclasses import asdict
 from rich import print
 import pytorch_lightning as pl
 from src.net import Classifier
 from src.data import ImageDataModule
-from src.utils import read_json, read_yaml, override_config, receive_data_from_pipeline
-from clearml import Task, OutputModel, StorageManager
-from clearml import Dataset as DatasetClearML
+from src.utils import override_config, receive_data_from_pipeline, export_upload_model
+from clearml import Task
 from config.default import TrainingConfig
-from finetuning_scheduler import FinetuningScheduler
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
-from pytorch_lightning.tuner import tuning
 
 # ----------------------------------------------------------------------------------
 # ClearML Setup
@@ -25,8 +21,8 @@ from pytorch_lightning.tuner import tuning
 # Task.add_requirements(f"-r {os.path.join(cwd,'docker/requirements.txt')}")
 Task.force_requirements_env_freeze(False, '/workspace/requirements.txt')
 task = Task.init(
-    project_name='Image Classifier/Template',
-    task_name='Template Classifier',  
+    project_name='Image-Classifier/Template',
+    task_name='Template-Classifier',  
     task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False,
     tags=['template']
@@ -96,11 +92,11 @@ print(asdict(conf))
 
 path_yaml_config = '/workspace/config/datasets.yaml'
 path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
-Task.current_task().execute_remotely()
+# Task.current_task().execute_remotely()
 
 
 task.rename(new_params['default']['TASK_NAME'])
-task.set_tags(['training'])
+task.set_tags(['Template', 'debug', 'dont-clone'])
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
@@ -126,6 +122,8 @@ data_module.prepare_data()
 conf.net.num_class = len(data_module.classes_name)
 conf.data.category = data_module.classes_name
 task.set_model_label_enumeration({lbl:idx for idx, lbl in enumerate(conf.data.category)})
+data_module.visualize_augmented_images('train-augment', num_images=15)
+data_module.visualize_augmented_images('val-augment', num_images=5)
 
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
@@ -153,8 +151,6 @@ lr_monitor = LearningRateMonitor(logging_interval='epoch')
 ls_callback = [
     checkpoint_callback,
     lr_monitor,
-    # early_stop_callback
-    # FinetuningScheduler()
 ]
 
 
@@ -167,8 +163,6 @@ print("""
 # Training and Testing 
 # ----------------------------------------------------------------------------------
 """)
-
-
 trainer = pl.Trainer(
     max_steps=-1,
     max_epochs=conf.hyp.epoch,
@@ -183,10 +177,29 @@ trainer = pl.Trainer(
 )
 data_module.setup(stage='fit')
 trainer.tune(model=model_classifier, datamodule=data_module)
+print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
 trainer.fit(model=model_classifier, datamodule=data_module)
+print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
 
 data_module.setup(stage='test')
 trainer.test(datamodule=data_module)
+print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
+
+# Export Model
+print("""
+# ----------------------------------------------------------------------------------
+# Export Model 
+# ----------------------------------------------------------------------------------
+"""
+)
+input_sample = torch.randn((1,3,conf.data.input_size,conf.data.input_size))
+path_export_model = 'export_model'
+os.makedirs(path_export_model, exist_ok=True)
+path_onnx = os.path.join(path_export_model, f'onnx-{conf.net.architecture}.onnx')
+path_torchscript = os.path.join(path_export_model, f'torchscript-{conf.net.architecture}.pt')
+model_classifier.to_onnx(path_onnx, input_sample)
+torch.jit.save(model_classifier.to_torchscript(), path_torchscript)
+
 
 print("""
 # ----------------------------------------------------------------------------------
@@ -194,23 +207,12 @@ print("""
 # ----------------------------------------------------------------------------------
 """
 )
-print("checkpoint_callback.dirpath: ", checkpoint_callback.dirpath)
-output_model_best = OutputModel(
-    task=task, 
-    name=f'best', 
-    framework="Pytorch Lightning", 
-)
-# output_model_best.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
-print(checkpoint_callback.best_model_path)
-print(checkpoint_callback.last_model_path)
-output_model_best.update_weights(
-    weights_filename=checkpoint_callback.best_model_path,
-    target_filename=f'best.ckpt')
-output_model_best.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})
+ls_upload_model = [
+    {'name_upload': 'onnx', 'framework': 'ONNX','path_weights': path_onnx},
+    {'name_upload': 'torchscript', 'framework': 'Pytorch','path_weights': path_torchscript},
+    {'name_upload': 'best-ckpt', 'framework': 'Pytorch Lightning','path_weights': checkpoint_callback.best_model_path},
+    {'name_upload': 'lastest-ckpt', 'framework': 'Pytorch Lightning','path_weights': checkpoint_callback.last_model_path},
+]
 
-output_model_last = OutputModel(task=task, name=f'latest', framework="Pytorch Lightning")
-# output_model_last.update_labels({lbl:idx for idx, lbl in enumerate(conf.data.category)})
-output_model_last.update_weights(
-    weights_filename=checkpoint_callback.last_model_path,
-    target_filename=f'latest.ckpt')
-output_model_last.update_design(config_dict={'net': conf.net.architecture, 'input_size': conf.data.input_size})
+for d_item in ls_upload_model:
+    export_upload_model(conf=conf, **d_item)

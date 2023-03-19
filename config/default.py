@@ -12,7 +12,7 @@ import torch
 @dataclass
 class Config(object):
     PROJECT_NAME:str = 'Template'
-    TASK_NAME:str = 'keep-drop'
+    TASK_NAME:str = 'template-training'
     TYPE_TASK:Enum = TaskTypes.training
     OUTPUT_URI:str = 's3://10.8.0.66:9000/clearml-test'
 
@@ -42,20 +42,20 @@ class Augmentations:
     type_executions:str = 'online' # offline
     augmentor_task:dict = field(init=False)
     
-    _mean = None
-    _std = None
+    mean = None
+    std = None
 
-    def set_mean_std(self, mean=Data.mean, std=Data.std):
-        self._mean = mean
-        self._std = std
+    def setmeanstd(self, mean=Data.mean, std=Data.std):
+        self.mean = mean
+        self.std = std
 
     def get_ls_train(self):
         _p_default = 0.5
         _p_medium = 0.75
         _p_highest = 0.95
 
-        if self._mean is None and self._std is None:
-            self.set_mean_std()
+        if self.mean is None and self.std is None:
+            self.setmeanstd()
         return [
             # common
             al.OneOf(p=1.0, transforms=[
@@ -66,7 +66,7 @@ class Augmentations:
                 always_apply=True,
                 shift_limit= [-0.12, 0.12],
                 scale_limit= [-0.05, 0.15],
-                rotate_limit= [-90, 90],
+                rotate_limit= [-45, 45],
                 interpolation= 0,
                 border_mode= 0,
                 value= [0, 0, 0]
@@ -78,9 +78,9 @@ class Augmentations:
                 min_width=0.02, max_width=0.12,
             ),
             al.RandomBrightnessContrast(
-                p=0.5, 
+                p=_p_default, 
                 brightness_limit=[-0.2, 0.45],
-                contrast_limit=[-0.15, 0.35],
+                contrast_limit=[-0.25, 0.35],
                 brightness_by_max=False
             ), 
             al.OneOf(p=_p_medium, transforms=[
@@ -90,17 +90,17 @@ class Augmentations:
                 al.MultiplicativeNoise()]
             ),
             al.Resize(height=Data.input_size, width=Data.input_size, always_apply=True),
-            al.Normalize(mean=self._mean, std=self._std, always_apply=True, max_pixel_value=255.0),
+            al.Normalize(mean=self.mean, std=self.std, always_apply=True, max_pixel_value=255.0),
             ToTensorV2(always_apply=True),
         ]
 
     def get_ls_val(self):
-        if self._mean is None and self._std is None:
-            self.set_mean_std()
+        if self.mean is None and self.std is None:
+            self.setmeanstd()
         return [
             al.Resize(height=Data.input_size, width=Data.input_size, always_apply=True),
-            al.Normalize(mean=self._mean, std=self._std, always_apply=True, max_pixel_value=255.0),
-            ToTensorV2(transpose_mask=True)
+            al.Normalize(mean=self.mean, std=self.std, always_apply=True, max_pixel_value=255.0),
+            ToTensorV2(transpose_mask=True),
         ]
     
     def __post_init__(self):
@@ -149,7 +149,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 30
+    epoch:int = 5
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer
