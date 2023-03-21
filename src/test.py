@@ -80,8 +80,8 @@ class ModelPredictor:
         input_tensor = self.preprocess_image(image)
         input_tensor = input_tensor.unsqueeze(0).to(self.device)  # Add batch dimension
 
+        self.model_pl.eval()
         with torch.no_grad():
-            self.model_pl.eval()
             output = self.model_pl(input_tensor)
             probabilities = torch.nn.functional.softmax(output, dim=1).cpu().squeeze().numpy()
 
@@ -135,14 +135,30 @@ class ModelPredictor:
 
 
         # Benchmark PyTorch Lightning model
-        # start_time = time.perf_counter()
-        # for _ in range(n_runs):
-        #     self.predict_pytorch_lightning(image)
-        # pytorch_lightning_duration = time.perf_counter() - start_time
+        ram_usages = []
+        vram_usages = []
+        # awal_ram = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
+        awal_ram = psutil.virtual_memory()[3]/(1048576)
+        gpus = GPUtil.getGPUs()
+        awal_vram = gpus[0].memoryUsed if len(gpus) > 0 else 0
+
+        start_time = time.perf_counter()
+        for _ in range(n_runs):
+            self.predict_pytorch_lightning(image)
+            # ram_usages.append(psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024) - awal_ram)
+            ram_usages.append(psutil.virtual_memory()[3]/(1048576) - awal_ram)
+            gpus = GPUtil.getGPUs()
+            current_gpus = gpus[0].memoryUsed if len(gpus) > 0 else 0
+            vram_usages.append(current_gpus - awal_vram)
+        pytorch_lightning_duration = time.perf_counter() - start_time
+                
+        # Calculate average resource usage
+        avg_ram_usage_pl = sum(ram_usages) / n_runs
+        avg_vram_usage_pl = sum(vram_usages) / n_runs
         
         print(f"ONNX Model: {onnx_duration / n_runs:.6f} seconds per prediction")
         print(f"TorchScript Model: {torchscript_duration / n_runs:.6f} seconds per prediction")
-        # print(f"PyTorch Lightning Model: {pytorch_lightning_duration / n_runs:.6f} seconds per prediction")
+        print(f"PyTorch Lightning Model: {pytorch_lightning_duration / n_runs:.6f} seconds per prediction")
 
         return {
                 'onnx': {
@@ -154,6 +170,11 @@ class ModelPredictor:
                     'duration': round(torchscript_duration/n_runs, 5),
                     'avg_ram_usage': round(avg_ram_usage_torchscript, 5),
                     'avg_vram_usage': round(avg_vram_usage_torchscript, 5)
+                },
+                'pytorchlightning': {
+                    'duration': round(pytorch_lightning_duration/n_runs, 5),
+                    'avg_ram_usage': round(avg_ram_usage_pl, 5),
+                    'avg_vram_usage': round(avg_vram_usage_pl, 5)
                 }
             }
 
@@ -177,9 +198,9 @@ if __name__ == '__main__':
     pytorch_lightning_prediction = predictor.predict_pytorch_lightning(cv2.imread(path_image))
     print('pytorch_lightning_prediction',pytorch_lightning_prediction)
     
-    result_bench = predictor.benchmark(
-        image=cv2.imread(path_image),
-        n_runs=100
-    )
+    # result_bench = predictor.benchmark(
+    #     image=cv2.imread(path_image),
+    #     n_runs=200
+    # )
 
-    print(result_bench)
+    # print(result_bench)

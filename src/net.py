@@ -170,6 +170,9 @@ class Classifier(pl.LightningModule):
 
         self.log('train_acc', acc_epoch)
         self.log('train_loss', loss_epoch)
+        if self.current_epoch == self.conf.hyp.epoch -1:
+            Task.current_task().get_logger().report_single_value('train_acc', acc_epoch)
+            Task.current_task().get_logger().report_single_value('train_loss', loss_epoch)
 
     def validation_step(self, batch, batch_idx):
         imgs, y = batch
@@ -195,6 +198,9 @@ class Classifier(pl.LightningModule):
 
         self.log('val_acc', acc_epoch)
         self.log('val_loss', loss_epoch)
+        if self.current_epoch == self.conf.hyp.epoch -1:
+            Task.current_task().get_logger().report_single_value('val_acc', acc_epoch)
+            Task.current_task().get_logger().report_single_value('val_loss', loss_epoch)
 
 
     def test_step(self, batch, batch_idx):
@@ -213,16 +219,9 @@ class Classifier(pl.LightningModule):
         self.__send_logger_clearml(labels_epoch, preds_epoch, loss_epoch, acc_epoch, section='Test')
         self.log('acc_test', acc_epoch)
         self.log('loss_test', loss_epoch)
+        Task.current_task().get_logger().report_single_value('test_acc', acc_epoch)
+        Task.current_task().get_logger().report_single_value('test_loss', loss_epoch)
 
-    def __visualize_augmentations(self, dataset, idx=0, samples=8, cols=4):
-        rows = samples // cols
-        figure, ax = plt.subplots(nrows=rows, ncols=cols, figsize=(12, 6))
-        for i in range(samples):
-            image = dataset[i].permute(1,2,0).cpu().numpy()
-            ax.ravel()[i].imshow(image)
-            ax.ravel()[i].set_axis_off()
-        plt.tight_layout()
-        plt.savefig('augmentasi.png')
 
     # generate metrics/plots
     def __confusion_matrix(self, preds, labels):
@@ -262,18 +261,19 @@ class Classifier(pl.LightningModule):
         return fig
 
     def __table_f1_prec_rec_sup(self, preds, labels):
-        pred = preds.max(1)[1].detach().cpu().numpy().tolist()
+        probs = torch.softmax(preds, dim=-1)
+        _, preds_top1 = torch.max(probs, dim=-1)
+        # pred = preds.max(1)[1].detach().cpu().numpy().tolist()
         label = labels.detach().cpu().numpy().tolist()
 
         d_map = {idx:lbl for idx, lbl in enumerate(self.classes_name)}
-        ls_pred = [d_map[p] for p in pred]
+        ls_pred = [d_map[p] for p in preds_top1.cpu().tolist()]
         ls_label = [d_map[l] for l in label]
 
         clsifier_report = precision_recall_fscore_support(
             y_true=ls_label, 
             y_pred=ls_pred, 
             labels=self.classes_name,
-            average='macro',
             zero_division=1.0)
 
         d_precision_recall_fbeta_support = {
@@ -309,6 +309,7 @@ class Classifier(pl.LightningModule):
         # fig_cm_val.update_xaxes(side="top")
         if section.lower() == 'test':
             iter_ = self.conf.hyp.epoch - 1
+
         else:
             iter_ = self.current_epoch
         for param_group in self.optimizers().optimizer.param_groups:
