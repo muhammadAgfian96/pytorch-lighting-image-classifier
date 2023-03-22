@@ -7,6 +7,7 @@ import torch
 import pandas as pd
 import pytorch_lightning as pl
 import torch.optim as optim
+from collections import defaultdict
 
 from config.default import TrainingConfig
 from torchmetrics import (
@@ -17,8 +18,9 @@ from torchmetrics import (
     # F1Score, Precision, Recall,
     # PrecisionRecallCurve
 )
+from PIL import Image
 import matplotlib.pyplot as plt
-
+import os
 from torchmetrics.functional import f1_score
 import torch.nn.functional as F
 from timm.scheduler import CosineLRScheduler, PlateauLRScheduler, StepLRScheduler, TanhLRScheduler
@@ -30,6 +32,15 @@ import plotly.graph_objects as go
 import plotly.express as px
 from rich import print
 from dataclasses import asdict
+
+
+def denormalize_image(image, mean, std):
+    img_copy = image.copy()
+    for i in range(img_copy.shape[2]):
+        img_copy[:, :, i] = img_copy[:, :, i] * std[i] + mean[i]
+    return img_copy
+
+
 
 
 def get_lr_scheduler_config(optimizer: torch.optim.Optimizer, 
@@ -173,6 +184,16 @@ class Classifier(pl.LightningModule):
         if self.current_epoch == self.conf.hyp.epoch -1:
             Task.current_task().get_logger().report_single_value('train_acc', acc_epoch)
             Task.current_task().get_logger().report_single_value('train_loss', loss_epoch)
+        
+        # if self.current_epoch > 2:
+        #     self.visualize_images(
+        #         test_outputs=outs,
+        #         section='train', 
+        #         epoch=self.current_epoch,
+        #         upload_to_clearml=True,
+        #         row_x_col= (3, 3),
+        #         gt_label_limit= 15
+        #     )
 
     def validation_step(self, batch, batch_idx):
         imgs, y = batch
@@ -186,7 +207,7 @@ class Classifier(pl.LightningModule):
 
         Task.current_task().get_logger().report_scalar(title='Accuracy Step', series='Validation', value=acc, iteration=self.global_step)
         Task.current_task().get_logger().report_scalar(title='Loss Step', series='Validation', value=loss, iteration=self.global_step)
-        return {"preds": y_hat, "labels": y, "loss": loss, "acc": acc}
+        return {"preds": y_hat, "labels": y, "loss": loss, "acc": acc, "imgs":imgs}
 
     def validation_step_end(self, validation_step_outputs):
         return validation_step_outputs
@@ -201,14 +222,24 @@ class Classifier(pl.LightningModule):
         if self.current_epoch == self.conf.hyp.epoch -1:
             Task.current_task().get_logger().report_single_value('val_acc', acc_epoch)
             Task.current_task().get_logger().report_single_value('val_loss', loss_epoch)
-
+        
+        if self.current_epoch > 2:
+            self.visualize_images(
+                test_outputs=outputs,
+                section='validation', 
+                epoch=self.current_epoch,
+                upload_to_clearml=True,
+                row_x_col= (5, 5),
+                gt_label_limit= 50
+            )
 
     def test_step(self, batch, batch_idx):
         imgs, labels = batch
         preds = self(imgs)
         acc = self.test_acc(preds, labels)
         loss = self.test_loss(preds, labels)
-        return {"preds": preds, "labels": labels, "acc": acc, "loss": loss}
+
+        return {"preds": preds, "labels": labels, "acc": acc, "loss": loss, "imgs":imgs}
 
     def test_step_end(self, test_step_outputs):
         return test_step_outputs
@@ -221,6 +252,14 @@ class Classifier(pl.LightningModule):
         self.log('loss_test', loss_epoch)
         Task.current_task().get_logger().report_single_value('test_acc', acc_epoch)
         Task.current_task().get_logger().report_single_value('test_loss', loss_epoch)
+        self.visualize_images(
+            test_outputs=outputs,
+            section='test', 
+            epoch=self.current_epoch,
+            upload_to_clearml=True,
+            row_x_col= (5, 5),
+            gt_label_limit= 200
+        )
 
 
     # generate metrics/plots
@@ -296,8 +335,11 @@ class Classifier(pl.LightningModule):
     def __send_logger_clearml(self, labels_epoch, preds_epoch, loss_epoch, acc_epoch, section):
         # Take the highest probability as the predicted class
         # Convert new_preds to a numpy array
-        # probs = torch.softmax(preds_epoch, dim=-1)
-        # _, preds_top1 = torch.max(probs, dim=-1)
+        probs = torch.softmax(preds_epoch, dim=-1)
+        _, preds_top1 = torch.max(probs, dim=-1)
+        print('preds_top1', preds_top1)
+        print('preds_epoch', preds_epoch)
+        print('labels_epoch', labels_epoch)
 
         fig_cm_val = self.__confusion_matrix(preds_epoch, labels_epoch)
         best_score_f1, best_threshold_f1 = self.__find_best_f1_score(preds_epoch, labels_epoch)
@@ -321,3 +363,103 @@ class Classifier(pl.LightningModule):
         # Task.current_task().get_logger().report_plotly(title='ROC & AUC', series=section, figure=fig_roc, iteration=iter_)
         Task.current_task().get_logger().report_table(title='Tables', series=f'precision_recall_fscore_support ({section})', table_plot=df_table_support, iteration=iter_)
         Task.current_task().get_logger().report_table(title='Tables', series=f'f1_score ({section})', table_plot=table, iteration=iter_)
+
+    def visualize_images(self, 
+                         test_outputs, 
+                         epoch, 
+                         section, 
+                         row_x_col = (5,5),
+                         upload_to_clearml=True,
+                         gt_label_limit = 50
+                         ):
+        FOLDER_SAVE = 'logger_predict'
+        os.makedirs(f'{FOLDER_SAVE}', exist_ok=True)
+        n_row, n_col = row_x_col
+        img_counter = 0
+        mean = self.conf.data.mean
+        std = self.conf.data.std
+        gt_label_count = defaultdict(int)
+
+        fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+        fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
+        for batch_idx in range(len(test_outputs)):
+            batch_images = test_outputs[batch_idx]["imgs"]
+            batch_labels = test_outputs[batch_idx]["labels"]
+            batch_preds = test_outputs[batch_idx]["preds"]
+
+            for sample_idx in range(len(batch_images)):                    
+                gt_label = batch_labels[sample_idx].item()
+                if gt_label_count[gt_label] > gt_label_limit:
+                    continue
+                gt_label_count[gt_label]+=1
+
+                img = batch_images[sample_idx].permute(1, 2, 0).cpu().numpy()
+                img = denormalize_image(img, mean, std)
+                
+                pred_label = batch_preds[sample_idx].argmax(dim=-1).item()
+                confidence = batch_preds[sample_idx].softmax(dim=-1).max().item()
+                conf = round(confidence*100, 2)
+
+                title_color = 'green' if pred_label == gt_label else 'red'
+                name_gt = self.classes_name[gt_label]
+                name_pred = self.classes_name[pred_label]
+
+                row_idx = img_counter // n_col
+                col_idx = img_counter % n_col
+
+                if n_row > 1:
+                    ax = axes[row_idx, col_idx]
+                else:
+                    ax = axes[col_idx]
+
+                # add to plot every image
+                ax.imshow(img)
+                ax.set_title(f"{name_gt} vs {name_pred} ({conf})", color=title_color)
+                ax.axis("off")
+
+                img_counter += 1
+
+                # If 25 images are displayed, reset the counter and create a new figure
+                # and clear the plot
+                if img_counter == n_row * n_col:
+                    plt.tight_layout()
+                    naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}' 
+                    path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
+                    plt.savefig(path_file_predict)
+                    if upload_to_clearml:
+                        Task.current_task().get_logger().report_image(
+                            f"{section.capitalize()}-Predict", 
+                            naming_file, 
+                            iteration=epoch,
+                            image= Image.open(path_file_predict)
+                        )
+                    # reset and create again
+                    img_counter = 0
+                    fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+                    fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
+            # Show the remaining images in the last grid, if there are any
+            if img_counter > 0:
+                for i in range(img_counter, n_row * n_col):
+                    row_idx = i // n_col
+                    col_idx = i % n_col
+                    if n_row > 1:
+                        axes[row_idx, col_idx].axis("off")
+                    else:
+                        axes[col_idx].axis("off")
+
+                plt.tight_layout()
+                naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}_last' 
+                path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
+                plt.savefig(path_file_predict)
+                if upload_to_clearml:
+                    Task.current_task().get_logger().report_image(
+                        f"{section.capitalize()}-Predict", 
+                        naming_file, 
+                        iteration=epoch,
+                        image= Image.open(path_file_predict)
+                    )
+                img_counter = 0
+                fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+                fig.subplots_adjust(hspace=0.5, wspace=0.5)
