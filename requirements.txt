@@ -19,3 +19,6 @@ torchmetrics==0.11.4
 tqdm
 ipython
 seaborn
+onnx
+GPUtil
+onnxruntime
