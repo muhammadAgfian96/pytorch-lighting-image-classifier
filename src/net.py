@@ -22,26 +22,20 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 from torchmetrics.functional import f1_score
-import torch.nn.functional as F
 from timm.scheduler import CosineLRScheduler, PlateauLRScheduler, StepLRScheduler, TanhLRScheduler
 from sklearn.metrics import precision_recall_fscore_support
 import numpy as np
-from types import SimpleNamespace
 from clearml import Task
 import plotly.graph_objects as go
 import plotly.express as px
 from rich import print
 from dataclasses import asdict
 
-
 def denormalize_image(image, mean, std):
     img_copy = image.copy()
     for i in range(img_copy.shape[2]):
         img_copy[:, :, i] = img_copy[:, :, i] * std[i] + mean[i]
     return img_copy
-
-
-
 
 def get_lr_scheduler_config(optimizer: torch.optim.Optimizer, 
     LR_SCHEDULER='step', LR_STEP_SIZE=7, LR_DECAY_RATE=0.1, LR_STEP_MILESTONES=[10, 15] ) -> dict:
@@ -151,7 +145,6 @@ class Classifier(pl.LightningModule):
         )
         return  [optimizer], [lr_scheduler_config]
            
-    
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
         # self.__visualize_augmentations(imgs)
@@ -223,7 +216,7 @@ class Classifier(pl.LightningModule):
             Task.current_task().get_logger().report_single_value('val_acc', acc_epoch)
             Task.current_task().get_logger().report_single_value('val_loss', loss_epoch)
         
-        if self.current_epoch > 2:
+        if self.current_epoch % 25 == 0:
             self.visualize_images(
                 test_outputs=outputs,
                 section='validation', 
@@ -260,7 +253,6 @@ class Classifier(pl.LightningModule):
             row_x_col= (5, 5),
             gt_label_limit= 200
         )
-
 
     # generate metrics/plots
     def __confusion_matrix(self, preds, labels):
@@ -427,6 +419,7 @@ class Classifier(pl.LightningModule):
                     naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}' 
                     path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
                     plt.savefig(path_file_predict)
+                    plt.close()
                     if upload_to_clearml:
                         Task.current_task().get_logger().report_image(
                             f"{section.capitalize()}-Predict", 
@@ -453,6 +446,7 @@ class Classifier(pl.LightningModule):
                 naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}_last' 
                 path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
                 plt.savefig(path_file_predict)
+                plt.close()
                 if upload_to_clearml:
                     Task.current_task().get_logger().report_image(
                         f"{section.capitalize()}-Predict", 
@@ -463,3 +457,4 @@ class Classifier(pl.LightningModule):
                 img_counter = 0
                 fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
                 fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
