@@ -10,6 +10,8 @@ dev:
 	docker run -it --rm --gpus all \
 	-e PYTHONPATH=/workspace \
 	-v ${PWD}:/workspace \
+	--shm-size=8g \
+	-v /home/agfian/clearml.conf:/root/clearml.conf \
 	--name dev-torch \
 	$(IMAGE) bash
 
