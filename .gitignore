@@ -5,3 +5,7 @@ dataset
 **dataset**
 *.pt
 *.ckpt
+export_model
+debug
+logger_predict
+exports
