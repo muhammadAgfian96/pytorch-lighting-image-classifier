@@ -110,7 +110,6 @@ class ModelPredictor:
                 'total_prediction': round( end_time_total - start_time_total, 3),
                 'vram': self.end_vram_onnx - self.awal_vram_onnx,
                 'ram': self.end_ram_onnx - self.awal_ram_onnx,
-                'device': 0,
             },
             'voxel_fiftyone': d,
         }
@@ -170,7 +169,6 @@ class ModelPredictor:
                 'total_prediction': round( end_time_total - start_time_total, 3),
                 'vram': self.end_vram_torch_script - self.awal_vram_torch_script,
                 'ram': self.end_ram_torch_script - self.awal_ram_torch_script,
-                'device': 0,
             },
             'voxel_fiftyone': d,
         }

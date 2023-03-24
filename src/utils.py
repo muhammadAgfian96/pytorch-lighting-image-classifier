@@ -249,7 +249,6 @@ def make_graph_performance(torchscript_performance, onnx_performance):
         if perbandingan == 100:
             return 100
 
-
     # Define the data
     onnx_accuracy = onnx_performance['accuracy']
     onnx_speed = onnx_performance['speed']
