@@ -13,7 +13,14 @@ import timm
 import os
 import psutil
 import GPUtil
-
+from PIL import Image
+from sklearn.metrics import (
+    confusion_matrix, 
+    precision_recall_fscore_support, 
+    accuracy_score, 
+    roc_auc_score,
+    roc_curve    
+)
 
 class ModelPredictor:
     def __init__(self, input_size, mean, std):
@@ -28,29 +35,146 @@ class ModelPredictor:
             ToTensorV2(transpose_mask=True),
         ])
 
+
+    def __get_gpu_vram(self):
+        gpus = GPUtil.getGPUs()
+        return gpus[0].memoryUsed if len(gpus) > 0 else 0
+    
+    def __get_ram(self):
+        return psutil.virtual_memory()[3]/(1048576)
+    
+    def get_accuracy_score(self, y_pred, y_true):
+        return round(accuracy_score(y_true=y_true, y_pred=y_pred)*100, 2)
+
     def preprocess_image(self, image):
         return self.transform(image=image)["image"]
 
     def load_onnx_model(self, model_path):
-        self.model_onnx = onnxruntime.InferenceSession(model_path, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'])
+        self.awal_ram_onnx = self.__get_ram()
+        self.awal_vram_onnx = self.__get_gpu_vram()
+        print('Get Device ONNX:', onnxruntime.get_device())
+        self.model_onnx = onnxruntime.InferenceSession(
+            model_path, 
+            providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+        )
+        self.providers_onnx = self.model_onnx.get_providers()
+        print('providers_onnx:', self.providers_onnx)
 
-    def predict_onnx(self, image):
-        input_tensor = self.preprocess_image(image)
+    def predict_onnx(self, input_tensor, use_preprocess= True):
+        if use_preprocess:
+            input_tensor = self.preprocess_image(input_tensor)
         input_name = self.model_onnx.get_inputs()[0].name
         output_name = self.model_onnx.get_outputs()[0].name
         prediction = self.model_onnx.run([output_name], {input_name: input_tensor.unsqueeze(0).numpy()})[0]
         soft_predict = softmax(np.array(prediction), axis=1)
-        return [f"{p:.2f}%" for p in soft_predict[0] * 100]
+        return [round(p, 3) for p in soft_predict[0]]
     
+    def predict_onnx_dataloaders(self, dataloaders, classes, export_51=True):
+        d = []
+        preds = []
+        grounds = []
+        time_prediction = []
+        print('[TEST] predicting using onnx')
+        start_time_total = time.perf_counter()    
+        for i, (url, label, fp_image) in enumerate(dataloaders):
+            start_time = time.perf_counter()
+            softmax_predict = self.predict_onnx(
+                input_tensor=np.array(Image.open(fp_image)), 
+                use_preprocess=True
+            )
+            inference_time = time.perf_counter() - start_time
+            time_prediction.append(inference_time)
+            
+            pred_idx = softmax_predict.index(max(softmax_predict))
+            pred_label = classes[pred_idx]
+            conf = max(softmax_predict)
+            
+            preds.append(pred_label)
+            grounds.append(label)
+            
+            d.append({
+                'url': url,
+                'predict': pred_label,
+                'ground_truth': label,
+                'confidence': conf
+            })
+        end_time_total = time.perf_counter()    
+        
+
+        self.end_ram_onnx = self.__get_ram()
+        self.end_vram_onnx = self.__get_gpu_vram()
+        data_desc = {
+            'info': {
+                'accuracy': self.get_accuracy_score(y_pred=preds, y_true=grounds),
+                'speed': round( sum(time_prediction)/len(time_prediction), 6),
+                'total_prediction': round( end_time_total - start_time_total, 3),
+                'vram': self.end_vram_onnx - self.awal_vram_onnx,
+                'ram': self.end_ram_onnx - self.awal_ram_onnx,
+                'device': 0,
+            },
+            'voxel_fiftyone': d,
+        }
+        return data_desc
+
     def load_torchscript_model(self, model_path):
+        self.awal_ram_torch_script = self.__get_ram()
+        self.awal_vram_torch_script = self.__get_gpu_vram()
         self.model_torchscript = torch.jit.load(model_path)
 
-    def predict_torchscript(self, image):
-        input_tensor = self.preprocess_image(image)
+    def predict_torchscript(self, input_tensor, use_preprocess=True):
+        if use_preprocess:
+            input_tensor = self.preprocess_image(input_tensor)
         with torch.no_grad():
             prediction = self.model_torchscript(input_tensor.unsqueeze(0))
         soft_predict = softmax(prediction.numpy(), axis=1)
-        return [f"{p:.2f}%" for p in soft_predict[0] * 100]
+        return [round(p, 3) for p in soft_predict[0]]
+
+    def predict_torchscript_dataloaders(self, dataloaders, classes):
+        d = []
+        preds = []
+        grounds = []
+        time_prediction = []
+        print('[TEST] predicting using torchscript')
+        start_time_total = time.perf_counter()    
+        for i, (url, label, fp_image) in enumerate(dataloaders):
+            start_time = time.perf_counter()
+            softmax_predict = self.predict_torchscript(
+                input_tensor=np.array(Image.open(fp_image)), 
+                use_preprocess=True
+            )
+            inference_time = time.perf_counter() - start_time
+            time_prediction.append(inference_time)
+            
+            
+            pred_idx = softmax_predict.index(max(softmax_predict))
+            pred_label = classes[pred_idx]
+            conf = max(softmax_predict)
+            
+            preds.append(pred_label)
+            grounds.append(label)
+            
+            d.append({
+                'url': url,
+                'predict': pred_label,
+                'ground_truth': label,
+                'confidence': conf
+            })
+        end_time_total = time.perf_counter()    
+
+        self.end_ram_torch_script = self.__get_ram()
+        self.end_vram_torch_script = self.__get_gpu_vram()
+        data_desc = {
+            'info': {
+                'accuracy': self.get_accuracy_score(y_pred=preds, y_true=grounds),
+                'speed': round( sum(time_prediction)/len(time_prediction), 6),
+                'total_prediction': round( end_time_total - start_time_total, 3),
+                'vram': self.end_vram_torch_script - self.awal_vram_torch_script,
+                'ram': self.end_ram_torch_script - self.awal_ram_torch_script,
+                'device': 0,
+            },
+            'voxel_fiftyone': d,
+        }
+        return data_desc
 
     def load_pytorch_lightning_checkpoint(self, checkpoint_path):
         # Load the checkpoint

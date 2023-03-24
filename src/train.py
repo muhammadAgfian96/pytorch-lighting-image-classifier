@@ -10,7 +10,7 @@ from rich import print
 import pytorch_lightning as pl
 from src.net import Classifier
 from src.data import ImageDataModule
-from src.utils import override_config, receive_data_from_pipeline, export_upload_model
+from src.utils import make_graph_performance, override_config, receive_data_from_pipeline, export_upload_model
 from clearml import Task
 from config.default import TrainingConfig
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
@@ -96,7 +96,7 @@ path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, '
 
 
 task.rename(new_params['default']['TASK_NAME'])
-task.set_tags(['Template', 'debug', 'dont-clone'])
+task.set_tags(['Template'])
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
@@ -173,7 +173,8 @@ trainer = pl.Trainer(
     precision=conf.hyp.precision,
     auto_scale_batch_size=auto_batch,
     auto_lr_find=auto_lr_find,
-    log_every_n_steps=4
+    log_every_n_steps=4,
+    # profiler="simple"
 )
 data_module.setup(stage='fit')
 trainer.tune(model=model_classifier, datamodule=data_module)
@@ -183,7 +184,7 @@ print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
 
 data_module.setup(stage='test')
 trainer.test(datamodule=data_module)
-print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
+print(f">> TEST TUNE BATCH_SIZE USE: {data_module.batch_size}")
 
 # Export Model
 print("""
@@ -195,11 +196,45 @@ print("""
 input_sample = torch.randn((1,3,conf.data.input_size,conf.data.input_size))
 path_export_model = 'export_model'
 os.makedirs(path_export_model, exist_ok=True)
+
 path_onnx = os.path.join(path_export_model, f'onnx-{conf.net.architecture}.onnx')
 path_torchscript = os.path.join(path_export_model, f'torchscript-{conf.net.architecture}.pt')
 model_classifier.to_onnx(path_onnx, input_sample)
 torch.jit.save(model_classifier.to_torchscript(), path_torchscript)
 
+print("""
+# ----------------------------------------------------------------------------------
+# Testing Model ONNX and TorchScript then upload to 51
+# ----------------------------------------------------------------------------------
+"""
+)
+
+from src.test import ModelPredictor
+model_tester = ModelPredictor(
+    input_size=conf.data.input_size,
+    mean=conf.data.mean,
+    std=conf.data.std
+)
+
+model_tester.load_onnx_model(path_onnx)
+model_tester.load_torchscript_model(path_torchscript)
+
+d_onnx_51 = model_tester.predict_onnx_dataloaders(
+    dataloaders=data_module.ls_test_map_dedicated,
+    classes=conf.data.category)
+d_torchscript_51 = model_tester.predict_torchscript_dataloaders(
+    dataloaders=data_module.ls_test_map_dedicated,
+    classes=conf.data.category
+)
+
+Task.current_task().upload_artifact('onnx_test_51', d_onnx_51,)
+Task.current_task().upload_artifact('torchscript_test_51', d_torchscript_51)
+
+print('torchscript:', d_torchscript_51['info'])
+print('onnx:', d_onnx_51['info'])
+
+fig_performance = make_graph_performance(torchscript_performance=d_torchscript_51['info'], onnx_performance=d_onnx_51['info'])
+Task.current_task().get_logger().report_plotly(series="Performance ONNX vs TorchScript", title="Performance", iteration=0, figure=fig_performance)
 
 print("""
 # ----------------------------------------------------------------------------------

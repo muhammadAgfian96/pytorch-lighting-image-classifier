@@ -5,9 +5,7 @@ import torch
 import pytorch_lightning as pl
 import albumentations as al
 import os
-from os.path import join
 from PIL import Image
-import cv2
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import plotly.graph_objects as go
@@ -15,110 +13,12 @@ import plotly.graph_objects as go
 from clearml import (
     Dataset as DatasetClearML, 
     StorageManager, 
-    Task)
+    Task
+)
 from config.default import TrainingConfig
 from rich import print
 from src.helper.data_helper import MinioDatasetDownloader
-from src.utils import read_yaml
-import matplotlib.pyplot as plt
-
-def check_image_health(file_path):
-    """
-    Check if the image is not corrupt.
-    """
-    try:
-        img = cv2.imread(file_path)
-        h, w, c = img.shape
-        if h > 0 and w > 0:
-            return True
-    except Exception as e:
-        print('[ERROR] Image Corrupt: ', file_path, e)
-        return False
-
-def split_dataset(images, train_ratio, val_ratio):
-    """
-    Split the dataset into train, validation, and test sets.
-    """
-    num_images = len(images)
-    train_count = int(train_ratio * num_images)
-    val_count = int(val_ratio * num_images)
-    random.shuffle(images)
-    train = images[:train_count]
-    val = images[train_count:train_count + val_count]
-    test = images[train_count + val_count:]
-    return train, val, test
-
-def get_list_data(config: TrainingConfig):
-    test_dir = '/workspace/current_dataset_test'
-    dedicated_test_dataset = os.path.exists(test_dir)
-
-    train_ratio = config.data.train_ratio
-    val_ratio = config.data.val_ratio
-    test_ratio = config.data.test_ratio
-
-    if dedicated_test_dataset:
-        val_ratio += test_ratio
-        test_ratio = 0.0
-    print(train_ratio, val_ratio, test_ratio)
-
-    metadata = {
-        'ratio': [train_ratio, val_ratio, test_ratio],
-        'counts': {
-            'train': {},
-            'val': {},
-            'test': {},
-        }
-    }
-
-    class_names = sorted(os.listdir(config.data.dir))
-
-    if dedicated_test_dataset:
-        class_names_test = sorted(os.listdir(test_dir))
-
-    data = {label: [] for label in class_names}
-    train_set, val_set, test_set = [], [], []
-
-    for label in class_names:
-        label_folder = join(config.data.dir, label)
-        for file in os.listdir(label_folder):
-            image_file = join(label_folder, file)
-            if check_image_health(image_file):
-                data[label].append((image_file, class_names.index(label)))
-
-    if dedicated_test_dataset:
-        test_data = {label: [] for label in class_names_test}
-        for label in class_names_test:
-            label_folder = join(test_dir, label)
-            for file in os.listdir(label_folder):
-                image_file = join(label_folder, file)
-                if check_image_health(image_file):
-                    test_data[label].append((image_file, class_names.index(label)))
-
-    for key, images in data.items():
-        train, val, test = split_dataset(images, train_ratio, val_ratio)
-        train_set.extend(train)
-        val_set.extend(val)
-        if dedicated_test_dataset:
-            val_set.extend(test)
-        else:
-            test_set.extend(test)
-
-        metadata['counts']['train'][key] = len(train)
-        metadata['counts']['val'][key] = len(val)
-        if not dedicated_test_dataset:
-            metadata['counts']['test'][key] = len(test)
-
-    if dedicated_test_dataset:
-        test_set = []
-        for key, images in test_data.items():
-            metadata['counts']['test'][key] = len(images)
-            test_set.extend(images)
-
-    metadata['train_count'] = len(train_set)
-    metadata['val_count'] = len(val_set)
-    metadata['test_count'] = len(test_set)
-
-    return data, train_set, val_set, test_set, metadata, class_names
+from src.utils import map_data_to_dict, read_yaml, get_list_data
 
 class ImageDatasetBinsho(Dataset):
     def __init__(self, data, transform, classes):
@@ -131,7 +31,22 @@ class ImageDatasetBinsho(Dataset):
     def __getitem__(self, index):
         fp_img, y  = self.data[index]
         y_label = torch.tensor(int(y))
-        x_image = np.array(Image.open(fp_img)) # rgb format!
+        x_image = np.array(Image.open(fp_img)) # RGB format!
+        x_image = self.transform(image=x_image)["image"] 
+        return x_image, y_label
+
+class ImageDatasetBinsho51(Dataset):
+    def __init__(self, data, transform, classes):
+        self.data = data
+        self.transform = al.Compose(transform)
+        self.classes = classes
+
+    def __len__(self): return len(self.data)
+    
+    def __getitem__(self, index):
+        fp_img, y  = self.data[index]
+        y_label = torch.tensor(int(y))
+        x_image = np.array(Image.open(fp_img)) # RGB format!
         x_image = self.transform(image=x_image)["image"] 
         return x_image, y_label
 
@@ -143,9 +58,12 @@ class ImageDataModule(pl.LightningDataModule):
         self.prepare_data_has_downloaded = False
         self.batch_size = self.conf.data.batch
         self.path_yaml_dataset = path_yaml_data
+        self.test_local_path = '/workspace/current_dataset_test'
 
         if os.path.exists('/workspace/current_dataset'):
             shutil.rmtree('/workspace/current_dataset')
+        if os.path.exists(self.test_local_path):
+            shutil.rmtree(self.test_local_path)
     
     def prepare_data(self) -> None:
         # set clearml and download the data
@@ -176,6 +94,7 @@ class ImageDataModule(pl.LightningDataModule):
 
                     print('path_downloaded:', self.conf.data.dir, downloaded_ds_s3)
                     self.data_dir = self.conf.data.dir
+                
                 elif type(self.conf.data.dataset) == type({}):
                     print('download dict')
                     s3_api = MinioDatasetDownloader(dataset=self.conf.data.dataset, download_dir='/workspace/current_dataset')
@@ -185,6 +104,7 @@ class ImageDataModule(pl.LightningDataModule):
                     self.data_dir = self.conf.data.dir = '/workspace/current_dataset'
                     duration = end_time - start_time
                     print('how long it take :', round(duration, 3), 'seconds')
+                
                 elif self.conf.data.dataset == 'datasets.yaml':
                     d_train, d_test = self.__extract_list_link_dataset_yaml()
                     class_name_train = d_train.keys() 
@@ -209,7 +129,7 @@ class ImageDataModule(pl.LightningDataModule):
                     print('[Train] how long it take dataset.yaml :', round(duration, 3), 'seconds')
 
                     if len(d_test) != 0:
-                        s3_api_test = MinioDatasetDownloader(dataset=d_test, download_dir='/workspace/current_dataset_test')
+                        s3_api_test = MinioDatasetDownloader(dataset=d_test, download_dir=self.test_local_path)
                         print('[Downloading] dataset-test')
                         start_time = time.time()
                         s3_api_test.download_dataset()
@@ -217,15 +137,19 @@ class ImageDataModule(pl.LightningDataModule):
                         duration = end_time - start_time
                         print('[Test] how long it take dataset.yaml :', round(duration, 3), 'seconds')
 
+                        self.ls_test_map_dedicated = map_data_to_dict(d_data=d_test, local_path_dir=self.test_local_path)
+
                 else:
                     print('dataset_id is dowloading',)
                     DatasetClearML.get(dataset_id=self.conf.data.dataset).get_mutable_local_copy(target_folder='/workspace/current_dataset', overwrite=True)
+                
                 print('success download data:', self.conf.data.dir)
                 self.prepare_data_has_downloaded = True
                 self.ddata_by_label, self.ls_train_set, self.ls_val_set, self.ls_test_set, self.d_metadata, self.classes_name = get_list_data(config=self.conf)
                 print('metadata:', self.d_metadata)
                 print('classname:', self.classes_name)
                 self.__log_distribution_data_clearml(self.d_metadata)
+            
             except Exception as e:
                 print(e)
                 print('out')
@@ -253,13 +177,13 @@ class ImageDataModule(pl.LightningDataModule):
                 classes=self.classes_name)
 
     def train_dataloader(self):
-        return DataLoader(self.data_train, batch_size=self.batch_size, shuffle=True, num_workers=8)
+        return DataLoader(self.data_train, batch_size=self.batch_size, shuffle=True, num_workers=6)
 
     def val_dataloader(self):
-        return DataLoader(self.data_val, batch_size=self.batch_size, num_workers=8)
+        return DataLoader(self.data_val, batch_size=self.batch_size, num_workers=4)
 
     def test_dataloader(self):
-        return DataLoader(self.data_test, batch_size=self.batch_size, num_workers=8)
+        return DataLoader(self.data_test, batch_size=self.batch_size, num_workers=4)
     
     def __log_distribution_data_clearml(self, d_metadata):
         labels_pie = ['train', 'val', 'test']
@@ -352,19 +276,6 @@ class ImageDataModule(pl.LightningDataModule):
             print('-----')
         return ls_urls_files
     
-
-    def __revert_transforms(self, tensor, mean, std):
-        # Convert the tensor to a NumPy array and transpose from CHW to HWC format
-        image_np = tensor.numpy().transpose(1, 2, 0)
-
-        # Denormalize the pixel values
-        image_np = (image_np * std) + mean
-
-        # Convert the float values to uint8
-        image_np = (image_np * 255).astype(np.uint8)
-
-        return image_np
-
     def visualize_augmented_images(self, section:str, num_images=5):
         print(f'vizualizing sample {section}...')
         ls_viz_data = []

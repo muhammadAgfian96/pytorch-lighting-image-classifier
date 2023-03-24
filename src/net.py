@@ -350,7 +350,7 @@ class Classifier(pl.LightningModule):
             Task.current_task().get_logger().report_scalar(title='LR', series='Train', value=param_group['lr'], iteration=iter_)
         Task.current_task().get_logger().report_scalar(title='Accuracy', series=section, value=acc_epoch, iteration=iter_)
         Task.current_task().get_logger().report_scalar(title='Loss', series=section, value=loss_epoch, iteration=iter_)
-        Task.current_task().get_logger().report_scalar(title='F1 Score', series=section, value=best_score_f1, iteration=iter_)
+        Task.current_task().get_logger().report_scalar(title='F1 Score', series=f"{section}", value=best_score_f1, iteration=iter_)
         Task.current_task().get_logger().report_plotly(title='Confusion Matrix', series=section, figure=fig_cm_val, iteration=iter_)
         # Task.current_task().get_logger().report_plotly(title='ROC & AUC', series=section, figure=fig_roc, iteration=iter_)
         Task.current_task().get_logger().report_table(title='Tables', series=f'precision_recall_fscore_support ({section})', table_plot=df_table_support, iteration=iter_)
