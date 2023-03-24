@@ -241,12 +241,16 @@ def map_data_to_dict(d_data, local_path_dir):
 def make_graph_performance(torchscript_performance, onnx_performance):
     print('Generating Graph Performance')
     def compare(ref_val, val):
-        perbandingan = round( val/ref_val * 100.0, 2)
-        if perbandingan > 100:
-            return 100 + perbandingan
-        if perbandingan < 100:
-            return perbandingan
-        if perbandingan == 100:
+        try:
+            perbandingan = round( val/ref_val * 100.0, 2)
+            if perbandingan > 100:
+                return 100 + perbandingan
+            if perbandingan < 100:
+                return perbandingan
+            if perbandingan == 100:
+                return 100
+        except Exception as e:
+            print(e)
             return 100
 
     # Define the data

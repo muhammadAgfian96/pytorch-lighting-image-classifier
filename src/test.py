@@ -35,14 +35,13 @@ class ModelPredictor:
             ToTensorV2(transpose_mask=True),
         ])
 
-
     def __get_gpu_vram(self):
         gpus = GPUtil.getGPUs()
         return gpus[0].memoryUsed if len(gpus) > 0 else 0
-    
+
     def __get_ram(self):
         return psutil.virtual_memory()[3]/(1048576)
-    
+
     def get_accuracy_score(self, y_pred, y_true):
         return round(accuracy_score(y_true=y_true, y_pred=y_pred)*100, 2)
 
@@ -68,7 +67,7 @@ class ModelPredictor:
         prediction = self.model_onnx.run([output_name], {input_name: input_tensor.unsqueeze(0).numpy()})[0]
         soft_predict = softmax(np.array(prediction), axis=1)
         return [round(p, 3) for p in soft_predict[0]]
-    
+
     def predict_onnx_dataloaders(self, dataloaders, classes, export_51=True):
         d = []
         preds = []
@@ -303,23 +302,27 @@ class ModelPredictor:
 if __name__ == '__main__':
     # Replace 'ModelClass' with your actual model class
 
-    predictor = ModelPredictor(input_size=224, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+    predictor = ModelPredictor(
+        input_size=224, 
+        mean=(0.5, 0.5, 0.5), 
+        std=(0.5, 0.5, 0.5)
+    )
     path_image = 'current_dataset/Bean/0036.jpg'
     # For ONNX model
     predictor.load_onnx_model("exports/onnx-edgenext_x_small.onnx")
     onnx_prediction = predictor.predict_onnx(cv2.imread(path_image))
-    print('onnx_prediction',onnx_prediction)
+    print('onnx_prediction', onnx_prediction)
 
     # For TorchScript model
     predictor.load_torchscript_model("exports/torchscript-edgenext_x_small.pt")
     torchscript_prediction = predictor.predict_torchscript(cv2.imread(path_image))
-    print('torchscript_prediction',torchscript_prediction)
+    print('torchscript_prediction', torchscript_prediction)
 
     # For PyTorch Lightning checkpoint
     predictor.load_pytorch_lightning_checkpoint("exports/best-ckpt-edgenext_x_small.ckpt")
     pytorch_lightning_prediction = predictor.predict_pytorch_lightning(cv2.imread(path_image))
-    print('pytorch_lightning_prediction',pytorch_lightning_prediction)
-    
+    print('pytorch_lightning_prediction', pytorch_lightning_prediction)
+
     # result_bench = predictor.benchmark(
     #     image=cv2.imread(path_image),
     #     n_runs=200
