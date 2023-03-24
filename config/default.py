@@ -33,8 +33,10 @@ class Data:
     test_ratio:float = 0.1
     input_size:int = 224
     input_resize:int = input_size + 32
-    mean = (0.5, 0.5, 0.5)
-    std = (0.5, 0.5, 0.5)
+    # mean = (0.5, 0.5, 0.5)
+    # std = (0.5, 0.5, 0.5)
+    mean = (0.485, 0.456, 0.406) 
+    std= (0.229, 0.224, 0.225)
 
 @dataclass
 class Augmentations:
@@ -83,11 +85,16 @@ class Augmentations:
                 contrast_limit=[-0.25, 0.35],
                 brightness_by_max=False
             ), 
-            al.OneOf(p=_p_medium, transforms=[
+            al.OneOf(p=_p_default, transforms=[
                 al.MotionBlur(),
                 al.ImageCompression(),
                 al.OpticalDistortion(),
                 al.MultiplicativeNoise()]
+            ),
+            al.ZoomBlur(
+                always_apply=False, 
+                p=_p_medium, max_factor=(1.0, 1.31), 
+                step_factor=(0.01, 0.03)
             ),
             al.Resize(height=Data.input_size, width=Data.input_size, always_apply=True),
             al.Normalize(mean=self.mean, std=self.std, always_apply=True, max_pixel_value=255.0),
@@ -149,7 +156,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 5
+    epoch:int = 10
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer
