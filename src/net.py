@@ -329,9 +329,9 @@ class Classifier(pl.LightningModule):
         # Convert new_preds to a numpy array
         probs = torch.softmax(preds_epoch, dim=-1)
         _, preds_top1 = torch.max(probs, dim=-1)
-        print('preds_top1', preds_top1)
-        print('preds_epoch', preds_epoch)
-        print('labels_epoch', labels_epoch)
+        # print('preds_top1', preds_top1)
+        # print('preds_epoch', preds_epoch)
+        # print('labels_epoch', labels_epoch)
 
         fig_cm_val = self.__confusion_matrix(preds_epoch, labels_epoch)
         best_score_f1, best_threshold_f1 = self.__find_best_f1_score(preds_epoch, labels_epoch)
