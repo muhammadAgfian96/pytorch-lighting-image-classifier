@@ -1,19 +1,24 @@
 import os
 import sys
+
 cwd = os.getcwd()
 os.environ['PYTHONPATH'] = cwd
 sys.path.append(cwd)
 
-import torch
 from dataclasses import asdict
-from rich import print
+
 import pytorch_lightning as pl
-from src.net import Classifier
-from src.data import ImageDataModule
-from src.utils import make_graph_performance, override_config, receive_data_from_pipeline, export_upload_model
+import torch
 from clearml import Task
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint)
+from rich import print
+
 from config.default import TrainingConfig
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
+from src.data import ImageDataModule
+from src.net import Classifier
+from src.utils import (export_upload_model, make_graph_performance,
+                       override_config, receive_data_from_pipeline)
 
 # ----------------------------------------------------------------------------------
 # ClearML Setup
@@ -92,11 +97,11 @@ print(asdict(conf))
 
 path_yaml_config = '/workspace/config/datasets.yaml'
 path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, 'datasets.yaml')
+task.set_tags(['Template_v1.1'])
 # Task.current_task().execute_remotely()
 
 
 task.rename(new_params['default']['TASK_NAME'])
-task.set_tags(['Template_v1.1'])
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
@@ -210,6 +215,7 @@ print("""
 )
 
 from src.test import ModelPredictor
+
 model_tester = ModelPredictor(
     input_size=conf.data.input_size,
     mean=conf.data.mean,

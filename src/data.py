@@ -1,24 +1,23 @@
+import os
 import random
 import shutil
 import time
-import torch
-import pytorch_lightning as pl
-import albumentations as al
-import os
-from PIL import Image
-import numpy as np
-from torch.utils.data import Dataset, DataLoader
-import plotly.graph_objects as go
 
-from clearml import (
-    Dataset as DatasetClearML, 
-    StorageManager, 
-    Task
-)
-from config.default import TrainingConfig
+import albumentations as al
+import numpy as np
+import plotly.graph_objects as go
+import pytorch_lightning as pl
+import torch
+from clearml import Dataset as DatasetClearML
+from clearml import StorageManager, Task
+from PIL import Image
 from rich import print
+from torch.utils.data import DataLoader, Dataset
+
+from config.default import TrainingConfig
 from src.helper.data_helper import MinioDatasetDownloader
-from src.utils import map_data_to_dict, read_yaml, get_list_data
+from src.utils import get_list_data, map_data_to_dict, read_yaml
+
 
 class ImageDatasetBinsho(Dataset):
     def __init__(self, data, transform, classes):
@@ -245,6 +244,8 @@ class ImageDataModule(pl.LightningDataModule):
     def __mapping_to_dict_class(self, ls_url_files_train):
         d_map = {}
         print('mapping to dict_class..')
+        if len(ls_url_files_train) == 0:
+            return None
         for d_file in ls_url_files_train:
             url_file = d_file['name']
             class_name  = url_file.split('/')[-2]

@@ -1,13 +1,15 @@
-from clearml import StorageManager, Task
-from config.default import TrainingConfig
-import yaml
 import json
-from clearml import Task, OutputModel, StorageManager
 import os
-from os.path import join
-import cv2
 import random
+from os.path import join
+
+import cv2
 import plotly.graph_objs as go
+import yaml
+from clearml import OutputModel, StorageManager, Task
+
+from config.default import TrainingConfig
+
 
 def export_upload_model(conf, path_weights, name_upload, framework):
     try:
@@ -47,8 +49,8 @@ def receive_data_from_pipeline(args_from_pipeline):
 
     # download all data
     print('Download all data...')
-    all_dataset = d_datasets_json['dataset']
-    small_dataset = d_datasets_json['small_dataset']
+    d_datasets_json['dataset']
+    d_datasets_json['small_dataset']
 
     d_report = d_config_yaml(path_reports)
     return d_config_yaml, d_datasets_json, d_report

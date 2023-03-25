@@ -1,26 +1,19 @@
-import cv2
-import numpy as np
-import onnx
-import onnxruntime
-import torch
+import time
+
 import albumentations as al
+import cv2
+import GPUtil
+import numpy as np
+import onnxruntime
+import psutil
+import timm
+import torch
 from albumentations.pytorch import ToTensorV2
-from pytorch_lightning import LightningModule
+from PIL import Image
 from rich import print
 from scipy.special import softmax
-import time
-import timm
-import os
-import psutil
-import GPUtil
-from PIL import Image
-from sklearn.metrics import (
-    confusion_matrix, 
-    precision_recall_fscore_support, 
-    accuracy_score, 
-    roc_auc_score,
-    roc_curve    
-)
+from sklearn.metrics import accuracy_score
+
 
 class ModelPredictor:
     def __init__(self, input_size, mean, std):
@@ -54,7 +47,11 @@ class ModelPredictor:
         print('Get Device ONNX:', onnxruntime.get_device())
         self.model_onnx = onnxruntime.InferenceSession(
             model_path, 
-            providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+            providers=[
+                'TensorrtExecutionProvider', 
+                'CUDAExecutionProvider', 
+                'CPUExecutionProvider'
+            ]
         )
         self.providers_onnx = self.model_onnx.get_providers()
         print('providers_onnx:', self.providers_onnx)
@@ -157,17 +154,18 @@ class ModelPredictor:
                 'ground_truth': label,
                 'confidence': conf
             })
-        end_time_total = time.perf_counter()    
 
+        end_time_total = time.perf_counter()    
         self.end_ram_torch_script = self.__get_ram()
         self.end_vram_torch_script = self.__get_gpu_vram()
+
         data_desc = {
             'info': {
                 'accuracy': self.get_accuracy_score(y_pred=preds, y_true=grounds),
                 'speed': round( sum(time_prediction)/len(time_prediction), 6),
                 'total_prediction': round( end_time_total - start_time_total, 3),
-                'vram': self.end_vram_torch_script - self.awal_vram_torch_script,
-                'ram': self.end_ram_torch_script - self.awal_ram_torch_script,
+                'vram': self.awal_vram_torch_script - self.end_vram_torch_script,
+                'ram': self.awal_ram_torch_script - self.end_ram_torch_script,
             },
             'voxel_fiftyone': d,
         }
@@ -180,7 +178,7 @@ class ModelPredictor:
         # Extract the hyperparameters
         hparams = checkpoint['hyper_parameters']
         net = hparams['net']
-        preprocessing = hparams['preprocessing']
+        hparams['preprocessing']
         
         # Create the model using timm
         self.model_pl = timm.create_model(

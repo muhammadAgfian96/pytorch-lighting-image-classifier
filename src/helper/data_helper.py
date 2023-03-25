@@ -1,7 +1,10 @@
 import os
-from concurrent.futures import ThreadPoolExecutor
 import shutil
+from concurrent.futures import ThreadPoolExecutor
+
 from minio import Minio
+
+
 class MinioDatasetDownloader:
     def __init__(self, dataset, download_dir):
         self.endpoint="10.8.0.66:9000"

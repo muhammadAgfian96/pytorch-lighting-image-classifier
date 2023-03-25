@@ -1,35 +1,26 @@
-import timm
-from timm.optim import (
-    create_optimizer_v2,
-    optimizer_kwargs
-)
-import torch
-import pandas as pd
-import pytorch_lightning as pl
-import torch.optim as optim
+import os
 from collections import defaultdict
+from dataclasses import asdict
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import pytorch_lightning as pl
+import timm
+import torch
+import torch.optim as optim
+from clearml import Task
+from PIL import Image
+from rich import print
+from sklearn.metrics import precision_recall_fscore_support
+from torchmetrics import (  # AUROC, AUC, ROC,; F1Score, Precision, Recall,; PrecisionRecallCurve
+    AUROC, ROC, Accuracy, ConfusionMatrix)
+from torchmetrics.functional import f1_score
 
 from config.default import TrainingConfig
-from torchmetrics import (
-    Accuracy, 
-    ConfusionMatrix, 
-    ROC, AUROC
-    # AUROC, AUC, ROC, 
-    # F1Score, Precision, Recall,
-    # PrecisionRecallCurve
-)
-from PIL import Image
-import matplotlib.pyplot as plt
-import os
-from torchmetrics.functional import f1_score
-from timm.scheduler import CosineLRScheduler, PlateauLRScheduler, StepLRScheduler, TanhLRScheduler
-from sklearn.metrics import precision_recall_fscore_support
-import numpy as np
-from clearml import Task
-import plotly.graph_objects as go
-import plotly.express as px
-from rich import print
-from dataclasses import asdict
+
 
 def denormalize_image(image, mean, std):
     img_copy = image.copy()
