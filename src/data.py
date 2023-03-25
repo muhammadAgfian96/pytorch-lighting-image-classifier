@@ -256,6 +256,9 @@ class ImageDataModule(pl.LightningDataModule):
         ls_urls_files = []
         print(f'Get list dataset-{section}...')
         for path_dataset in datasets_yaml[f'dataset-{section}']:
+            if path_dataset is None:
+                print('None path_dataset')
+                continue
             if 's3://10.8.0.66:9000' not in path_dataset: 
                 remote_url = os.path.join('s3://10.8.0.66:9000', path_dataset)
             else: 
