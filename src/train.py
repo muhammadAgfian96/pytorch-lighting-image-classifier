@@ -96,7 +96,7 @@ path_yaml_config = Task.current_task().connect_configuration(path_yaml_config, '
 
 
 task.rename(new_params['default']['TASK_NAME'])
-task.set_tags(['Template'])
+task.set_tags(['Template_v1.1'])
 print("""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
@@ -122,8 +122,8 @@ data_module.prepare_data()
 conf.net.num_class = len(data_module.classes_name)
 conf.data.category = data_module.classes_name
 task.set_model_label_enumeration({lbl:idx for idx, lbl in enumerate(conf.data.category)})
-data_module.visualize_augmented_images('train-augment', num_images=15)
-data_module.visualize_augmented_images('val-augment', num_images=5)
+data_module.visualize_augmented_images('train-augment', num_images=50)
+data_module.visualize_augmented_images('val-augment', num_images=15)
 
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
