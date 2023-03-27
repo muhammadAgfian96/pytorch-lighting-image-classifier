@@ -15,8 +15,13 @@ from clearml import Task
 from PIL import Image
 from rich import print
 from sklearn.metrics import precision_recall_fscore_support
-from torchmetrics import (  # AUROC, AUC, ROC,; F1Score, Precision, Recall,; PrecisionRecallCurve
-    AUROC, ROC, Accuracy, ConfusionMatrix)
+from torchmetrics import (
+    # AUROC, AUC, ROC,; F1Score, Precision, Recall,; PrecisionRecallCurve
+    AUROC,
+    ROC,
+    Accuracy,
+    ConfusionMatrix,
+)
 from torchmetrics.functional import f1_score
 
 from config.default import TrainingConfig
@@ -28,46 +33,56 @@ def denormalize_image(image, mean, std):
         img_copy[:, :, i] = img_copy[:, :, i] * std[i] + mean[i]
     return img_copy
 
-def get_lr_scheduler_config(optimizer: torch.optim.Optimizer, 
-    LR_SCHEDULER='step', LR_STEP_SIZE=7, LR_DECAY_RATE=0.1, LR_STEP_MILESTONES=[10, 15] ) -> dict:
 
-    if LR_SCHEDULER == 'step':
+def get_lr_scheduler_config(
+    optimizer: torch.optim.Optimizer,
+    LR_SCHEDULER="step",
+    LR_STEP_SIZE=7,
+    LR_DECAY_RATE=0.1,
+    LR_STEP_MILESTONES=[10, 15],
+) -> dict:
+    if LR_SCHEDULER == "step":
         scheduler = torch.optim.lr_scheduler.StepLR(
             optimizer, step_size=LR_STEP_SIZE, gamma=LR_DECAY_RATE
         )
         lr_scheduler_config = {
-            'scheduler': scheduler,
-            'interval': 'epoch',
-            'frequency': 1,
+            "scheduler": scheduler,
+            "interval": "epoch",
+            "frequency": 1,
         }
-    elif LR_SCHEDULER == 'multistep':
+    elif LR_SCHEDULER == "multistep":
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=LR_STEP_MILESTONES, gamma=LR_DECAY_RATE
         )
         lr_scheduler_config = {
-            'scheduler': scheduler,
-            'interval': 'epoch',
-            'frequency': 1,
+            "scheduler": scheduler,
+            "interval": "epoch",
+            "frequency": 1,
         }
-    elif LR_SCHEDULER == 'reduce_on_plateau':
+    elif LR_SCHEDULER == "reduce_on_plateau":
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', factor=0.1, patience=4, threshold=0.0001,
+            optimizer,
+            mode="min",
+            factor=0.1,
+            patience=4,
+            threshold=0.0001,
             min_lr=0.000001,
-            verbose=True
+            verbose=True,
         )
         lr_scheduler_config = {
-            'scheduler': scheduler,
-            'monitor': 'train_loss',
-            'interval': 'epoch',
-            'frequency': 1,
+            "scheduler": scheduler,
+            "monitor": "train_loss",
+            "interval": "epoch",
+            "frequency": 1,
         }
     else:
         raise NotImplementedError
 
     return lr_scheduler_config, scheduler
 
+
 class Classifier(pl.LightningModule):
-    def __init__(self, conf:TrainingConfig):
+    def __init__(self, conf: TrainingConfig):
         super().__init__()
         self.conf = conf
         self.model = timm.create_model(
@@ -76,16 +91,16 @@ class Classifier(pl.LightningModule):
             num_classes=self.conf.net.num_class,
             drop_rate=self.conf.net.dropout,
         )
-        
+
         self.classes_name = self.conf.data.category
 
         self.train_loss = torch.nn.CrossEntropyLoss()
         self.val_loss = torch.nn.CrossEntropyLoss()
         self.test_loss = torch.nn.CrossEntropyLoss()
-        
+
         num_class = self.conf.net.num_class
         # self.task_accuracy = 'multiclass' if num_class > 2 else 'binary'
-        self.task_accuracy = 'multiclass' 
+        self.task_accuracy = "multiclass"
         self.train_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
         self.val_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
         self.test_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
@@ -95,47 +110,52 @@ class Classifier(pl.LightningModule):
 
         self.learning_rate = self.conf.hyp.base_learning_rate
         d_hyp = asdict(self.conf.hyp)
-        self.save_hyperparameters({
-            'net': {
-                'architecture': self.conf.net.architecture,
-                'dropout': self.conf.net.dropout,
-                'num_class': len(self.classes_name),
-                'labels': self.classes_name,
-            },
-            'preprocessing': {
-                'input_size': self.conf.data.input_size,
-                'mean': self.conf.data.mean,
-                'std': self.conf.data.std,
-            },
-            'hyperparameters': d_hyp
-        })
+        self.save_hyperparameters(
+            {
+                "net": {
+                    "architecture": self.conf.net.architecture,
+                    "dropout": self.conf.net.dropout,
+                    "num_class": len(self.classes_name),
+                    "labels": self.classes_name,
+                },
+                "preprocessing": {
+                    "input_size": self.conf.data.input_size,
+                    "mean": self.conf.data.mean,
+                    "std": self.conf.data.std,
+                },
+                "hyperparameters": d_hyp,
+            }
+        )
 
     def forward(self, imgs):
         # Forward function that is run when visualizing the graph
         return self.model(imgs)
-    
+
     def configure_optimizers(self):
         opt_d = {
-            'Adam': optim.Adam(self.model.parameters(), lr=self.learning_rate),
-            'SGD': optim.SGD(self.model.parameters(), lr=self.learning_rate),
-            'AdamW': optim.AdamW(self.model.parameters(), lr=self.learning_rate),
-            'RMSprop': optim.RMSprop(self.model.parameters(), lr=self.learning_rate),
-            'Nadam': optim.NAdam(self.model.parameters(), lr=self.learning_rate),
-            'Adadelta': optim.Adadelta(self.model.parameters(), lr=self.learning_rate),
-            'Adagrad': optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
-            'Adamax': optim.Adamax(self.model.parameters(), lr=self.learning_rate),
+            "Adam": optim.Adam(self.model.parameters(), lr=self.learning_rate),
+            "SGD": optim.SGD(self.model.parameters(), lr=self.learning_rate),
+            "AdamW": optim.AdamW(self.model.parameters(), lr=self.learning_rate),
+            "RMSprop": optim.RMSprop(self.model.parameters(), lr=self.learning_rate),
+            "Nadam": optim.NAdam(self.model.parameters(), lr=self.learning_rate),
+            "Adadelta": optim.Adadelta(self.model.parameters(), lr=self.learning_rate),
+            "Adagrad": optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
+            "Adamax": optim.Adamax(self.model.parameters(), lr=self.learning_rate),
         }
 
-        optimizer = opt_d.get(self.conf.hyp.opt_name, optim.Adam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate))
-        
+        optimizer = opt_d.get(
+            self.conf.hyp.opt_name,
+            optim.Adam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
+        )
+
         lr_scheduler_config, scheduler = get_lr_scheduler_config(
-            optimizer, 
+            optimizer,
             LR_SCHEDULER=self.conf.hyp.lr_scheduler,
             LR_DECAY_RATE=self.conf.hyp.lr_decay_rate,
-            LR_STEP_SIZE=self.conf.hyp.lr_step_size
+            LR_STEP_SIZE=self.conf.hyp.lr_step_size,
         )
-        return  [optimizer], [lr_scheduler_config]
-           
+        return [optimizer], [lr_scheduler_config]
+
     def training_step(self, batch, batch_idx):
         imgs, labels = batch
         # self.__visualize_augmentations(imgs)
@@ -147,11 +167,21 @@ class Classifier(pl.LightningModule):
         acc = self.train_acc(pred, labels)
 
         # print(preds[0:5], labels[0:5])
-        self.log('train_acc_step', acc)
-        self.log('train_loss_step', loss)
-        
-        Task.current_task().get_logger().report_scalar(title='Accuracy Step', series='Train', value=acc, iteration=self.global_step)
-        Task.current_task().get_logger().report_scalar(title='Loss Step', series='Train', value=loss, iteration=self.global_step)
+        self.log("train_acc_step", acc)
+        self.log("train_loss_step", loss)
+
+        Task.current_task().get_logger().report_scalar(
+            title="Accuracy Step",
+            series="Train",
+            value=acc,
+            iteration=self.global_step,
+        )
+        Task.current_task().get_logger().report_scalar(
+            title="Loss Step",
+            series="Train",
+            value=loss,
+            iteration=self.global_step,
+        )
 
         return {"preds": preds, "labels": labels, "loss": loss, "acc": acc}
 
@@ -160,19 +190,28 @@ class Classifier(pl.LightningModule):
 
     def training_epoch_end(self, outs):
         # compile log
-        labels_epoch, preds_epoch, loss_epoch, acc_epoch = self.__get_metrics_epoch(outs)
-        self.__send_logger_clearml(labels_epoch, preds_epoch, loss_epoch, acc_epoch, section='Train')
+        (
+            labels_epoch,
+            preds_epoch,
+            loss_epoch,
+            acc_epoch,
+        ) = self.__get_metrics_epoch(outs)
+        self.__send_logger_clearml(
+            labels_epoch, preds_epoch, loss_epoch, acc_epoch, section="Train"
+        )
 
-        self.log('train_acc', acc_epoch)
-        self.log('train_loss', loss_epoch)
-        if self.current_epoch == self.conf.hyp.epoch -1:
-            Task.current_task().get_logger().report_single_value('train_acc', acc_epoch)
-            Task.current_task().get_logger().report_single_value('train_loss', loss_epoch)
-        
+        self.log("train_acc", acc_epoch)
+        self.log("train_loss", loss_epoch)
+        if self.current_epoch == self.conf.hyp.epoch - 1:
+            Task.current_task().get_logger().report_single_value("train_acc", acc_epoch)
+            Task.current_task().get_logger().report_single_value(
+                "train_loss", loss_epoch
+            )
+
         # if self.current_epoch > 2:
         #     self.visualize_images(
         #         test_outputs=outs,
-        #         section='train', 
+        #         section='train',
         #         epoch=self.current_epoch,
         #         upload_to_clearml=True,
         #         row_x_col= (3, 3),
@@ -186,35 +225,62 @@ class Classifier(pl.LightningModule):
 
         loss = self.val_loss(y_hat, y)
         acc = self.val_acc(pred, y)
-        self.log('val_acc_step', acc)
-        self.log('val_loss_step', loss)
+        self.log("val_acc_step", acc)
+        self.log("val_loss_step", loss)
 
-        Task.current_task().get_logger().report_scalar(title='Accuracy Step', series='Validation', value=acc, iteration=self.global_step)
-        Task.current_task().get_logger().report_scalar(title='Loss Step', series='Validation', value=loss, iteration=self.global_step)
-        return {"preds": y_hat, "labels": y, "loss": loss, "acc": acc, "imgs":imgs}
+        Task.current_task().get_logger().report_scalar(
+            title="Accuracy Step",
+            series="Validation",
+            value=acc,
+            iteration=self.global_step,
+        )
+        Task.current_task().get_logger().report_scalar(
+            title="Loss Step",
+            series="Validation",
+            value=loss,
+            iteration=self.global_step,
+        )
+        return {
+            "preds": y_hat,
+            "labels": y,
+            "loss": loss,
+            "acc": acc,
+            "imgs": imgs,
+        }
 
     def validation_step_end(self, validation_step_outputs):
         return validation_step_outputs
-    
+
     def validation_epoch_end(self, outputs):
         # compile log
-        labels_epoch, preds_epoch, loss_epoch, acc_epoch = self.__get_metrics_epoch(outputs)
-        self.__send_logger_clearml(labels_epoch, preds_epoch, loss_epoch, acc_epoch, section='Validation')
+        (
+            labels_epoch,
+            preds_epoch,
+            loss_epoch,
+            acc_epoch,
+        ) = self.__get_metrics_epoch(outputs)
+        self.__send_logger_clearml(
+            labels_epoch,
+            preds_epoch,
+            loss_epoch,
+            acc_epoch,
+            section="Validation",
+        )
 
-        self.log('val_acc', acc_epoch)
-        self.log('val_loss', loss_epoch)
-        if self.current_epoch == self.conf.hyp.epoch -1:
-            Task.current_task().get_logger().report_single_value('val_acc', acc_epoch)
-            Task.current_task().get_logger().report_single_value('val_loss', loss_epoch)
-        
+        self.log("val_acc", acc_epoch)
+        self.log("val_loss", loss_epoch)
+        if self.current_epoch == self.conf.hyp.epoch - 1:
+            Task.current_task().get_logger().report_single_value("val_acc", acc_epoch)
+            Task.current_task().get_logger().report_single_value("val_loss", loss_epoch)
+
         if self.current_epoch % 25 == 0:
             self.visualize_images(
                 test_outputs=outputs,
-                section='validation', 
+                section="validation",
                 epoch=self.current_epoch,
                 upload_to_clearml=True,
-                row_x_col= (5, 5),
-                gt_label_limit= 50
+                row_x_col=(5, 5),
+                gt_label_limit=50,
             )
 
     def test_step(self, batch, batch_idx):
@@ -223,26 +289,39 @@ class Classifier(pl.LightningModule):
         acc = self.test_acc(preds, labels)
         loss = self.test_loss(preds, labels)
 
-        return {"preds": preds, "labels": labels, "acc": acc, "loss": loss, "imgs":imgs}
+        return {
+            "preds": preds,
+            "labels": labels,
+            "acc": acc,
+            "loss": loss,
+            "imgs": imgs,
+        }
 
     def test_step_end(self, test_step_outputs):
         return test_step_outputs
-    
+
     def test_epoch_end(self, outputs) -> None:
         # get data
-        labels_epoch, preds_epoch, loss_epoch, acc_epoch = self.__get_metrics_epoch(outputs)        
-        self.__send_logger_clearml(labels_epoch, preds_epoch, loss_epoch, acc_epoch, section='Test')
-        self.log('acc_test', acc_epoch)
-        self.log('loss_test', loss_epoch)
-        Task.current_task().get_logger().report_single_value('test_acc', acc_epoch)
-        Task.current_task().get_logger().report_single_value('test_loss', loss_epoch)
+        (
+            labels_epoch,
+            preds_epoch,
+            loss_epoch,
+            acc_epoch,
+        ) = self.__get_metrics_epoch(outputs)
+        self.__send_logger_clearml(
+            labels_epoch, preds_epoch, loss_epoch, acc_epoch, section="Test"
+        )
+        self.log("acc_test", acc_epoch)
+        self.log("loss_test", loss_epoch)
+        Task.current_task().get_logger().report_single_value("test_acc", acc_epoch)
+        Task.current_task().get_logger().report_single_value("test_loss", loss_epoch)
         self.visualize_images(
             test_outputs=outputs,
-            section='test', 
+            section="test",
             epoch=self.current_epoch,
             upload_to_clearml=True,
-            row_x_col= (5, 5),
-            gt_label_limit= 200
+            row_x_col=(5, 5),
+            gt_label_limit=200,
         )
 
     # generate metrics/plots
@@ -250,16 +329,30 @@ class Classifier(pl.LightningModule):
         # print(preds, labels)
 
         df_cm = pd.DataFrame(
-            self.cm(preds, labels).cpu().numpy(), 
-            index=[lbl+'_gt' for lbl in self.classes_name], 
-            columns=[lbl+'_pd' for lbl in self.classes_name]
+            self.cm(preds, labels).cpu().numpy(),
+            index=[lbl + "_gt" for lbl in self.classes_name],
+            columns=[lbl + "_pd" for lbl in self.classes_name],
         )
-        fig_cm_val = px.imshow(df_cm, text_auto=True, color_continuous_scale=px.colors.sequential.Blues)
+        fig_cm_val = px.imshow(
+            df_cm,
+            text_auto=True,
+            color_continuous_scale=px.colors.sequential.Blues,
+        )
         return fig_cm_val
 
     def __find_best_f1_score(self, preds, labels):
         threshold = np.arange(0.1, 0.99, 0.025, dtype=np.float16).tolist()
-        scores_f1 = [f1_score(task=self.task_accuracy, preds=preds, target=labels, threshold=thresh, num_classes=self.conf.net.num_class, top_k=1).item() for thresh in threshold]
+        scores_f1 = [
+            f1_score(
+                task=self.task_accuracy,
+                preds=preds,
+                target=labels,
+                threshold=thresh,
+                num_classes=self.conf.net.num_class,
+                top_k=1,
+            ).item()
+            for thresh in threshold
+        ]
         scores_f1 = torch.tensor(scores_f1)
         idx_score_max = torch.argmax(scores_f1).item()
         best_threshold = threshold[idx_score_max]
@@ -269,16 +362,20 @@ class Classifier(pl.LightningModule):
     def __roc_plot(self, preds_logits, labels):
         self.roc.update(preds_logits, labels)
         self.auroc.update(preds_logits, labels)
-                # Get the false positive rate, true positive rate, and threshold for class 1
+        # Get the false positive rate, true positive rate, and threshold for class 1
         result_roc = self.roc.compute()
         result_auc = self.auroc.compute()
-        print('result_roc', result_roc)
-        print('result_auc', result_auc)
+        print("result_roc", result_roc)
+        print("result_auc", result_auc)
         # Create a plotly graph of the ROC curve and the AUROC curve
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=roc_fpr, y=roc_tpr, name='ROC Curve'))
-        fig.add_trace(go.Scatter(x=auroc_fpr[1], y=auroc_tpr[1], name='AUROC Curve'))
-        fig.update_layout(title='ROC and AUROC Curves', xaxis_title='False Positive Rate', yaxis_title='True Positive Rate')
+        fig.add_trace(go.Scatter(x=roc_fpr, y=roc_tpr, name="ROC Curve"))
+        fig.add_trace(go.Scatter(x=auroc_fpr[1], y=auroc_tpr[1], name="AUROC Curve"))
+        fig.update_layout(
+            title="ROC and AUROC Curves",
+            xaxis_title="False Positive Rate",
+            yaxis_title="True Positive Rate",
+        )
 
         return fig
 
@@ -288,24 +385,27 @@ class Classifier(pl.LightningModule):
         # pred = preds.max(1)[1].detach().cpu().numpy().tolist()
         label = labels.detach().cpu().numpy().tolist()
 
-        d_map = {idx:lbl for idx, lbl in enumerate(self.classes_name)}
+        d_map = {idx: lbl for idx, lbl in enumerate(self.classes_name)}
         ls_pred = [d_map[p] for p in preds_top1.cpu().tolist()]
         ls_label = [d_map[l] for l in label]
 
         clsifier_report = precision_recall_fscore_support(
-            y_true=ls_label, 
-            y_pred=ls_pred, 
+            y_true=ls_label,
+            y_pred=ls_pred,
             labels=self.classes_name,
-            zero_division=1.0)
+            zero_division=1.0,
+        )
 
         d_precision_recall_fbeta_support = {
-            'class': self.classes_name,
-            'precision': clsifier_report[0],
-            'recall': clsifier_report[1],
-            'f1_score': clsifier_report[2],
-            'count_data': clsifier_report[3]
+            "class": self.classes_name,
+            "precision": clsifier_report[0],
+            "recall": clsifier_report[1],
+            "f1_score": clsifier_report[2],
+            "count_data": clsifier_report[3],
         }
-        df_precision_recall_fbeta_support = pd.DataFrame.from_dict(d_precision_recall_fbeta_support)
+        df_precision_recall_fbeta_support = pd.DataFrame.from_dict(
+            d_precision_recall_fbeta_support
+        )
         return df_precision_recall_fbeta_support
 
     def __get_metrics_epoch(self, outs):
@@ -315,7 +415,9 @@ class Classifier(pl.LightningModule):
         acc_epoch = torch.stack([x["acc"] for x in outs]).mean()
         return labels_epoch, preds_epoch, loss_epoch, acc_epoch
 
-    def __send_logger_clearml(self, labels_epoch, preds_epoch, loss_epoch, acc_epoch, section):
+    def __send_logger_clearml(
+        self, labels_epoch, preds_epoch, loss_epoch, acc_epoch, section
+    ):
         # Take the highest probability as the predicted class
         # Convert new_preds to a numpy array
         probs = torch.softmax(preds_epoch, dim=-1)
@@ -325,38 +427,76 @@ class Classifier(pl.LightningModule):
         # print('labels_epoch', labels_epoch)
 
         fig_cm_val = self.__confusion_matrix(preds_epoch, labels_epoch)
-        best_score_f1, best_threshold_f1 = self.__find_best_f1_score(preds_epoch, labels_epoch)
+        best_score_f1, best_threshold_f1 = self.__find_best_f1_score(
+            preds_epoch, labels_epoch
+        )
         # fig_roc = self.__roc_plot(preds_epoch, labels_epoch)
         df_table_support = self.__table_f1_prec_rec_sup(preds_epoch, labels_epoch)
-        table = pd.DataFrame.from_dict({'Threshold': [best_threshold_f1], 'F1 Score': [best_score_f1]})
-
+        table = pd.DataFrame.from_dict(
+            {"Threshold": [best_threshold_f1], "F1 Score": [best_score_f1]}
+        )
 
         # fig_cm_val.update_xaxes(side="top")
-        if section.lower() == 'test':
+        if section.lower() == "test":
             iter_ = self.conf.hyp.epoch - 1
 
         else:
             iter_ = self.current_epoch
         for param_group in self.optimizers().optimizer.param_groups:
-            Task.current_task().get_logger().report_scalar(title='LR', series='Train', value=param_group['lr'], iteration=iter_)
-        Task.current_task().get_logger().report_scalar(title='Accuracy', series=section, value=acc_epoch, iteration=iter_)
-        Task.current_task().get_logger().report_scalar(title='Loss', series=section, value=loss_epoch, iteration=iter_)
-        Task.current_task().get_logger().report_scalar(title='F1 Score', series=f"{section}", value=best_score_f1, iteration=iter_)
-        Task.current_task().get_logger().report_plotly(title='Confusion Matrix', series=section, figure=fig_cm_val, iteration=iter_)
-        # Task.current_task().get_logger().report_plotly(title='ROC & AUC', series=section, figure=fig_roc, iteration=iter_)
-        Task.current_task().get_logger().report_table(title='Tables', series=f'precision_recall_fscore_support ({section})', table_plot=df_table_support, iteration=iter_)
-        Task.current_task().get_logger().report_table(title='Tables', series=f'f1_score ({section})', table_plot=table, iteration=iter_)
+            Task.current_task().get_logger().report_scalar(
+                title="LR",
+                series="Train",
+                value=param_group["lr"],
+                iteration=iter_,
+            )
+        Task.current_task().get_logger().report_scalar(
+            title="Accuracy", series=section, value=acc_epoch, iteration=iter_
+        )
+        Task.current_task().get_logger().report_scalar(
+            title="Loss", series=section, value=loss_epoch, iteration=iter_
+        )
+        Task.current_task().get_logger().report_scalar(
+            title="F1 Score",
+            series=f"{section}",
+            value=best_score_f1,
+            iteration=iter_,
+        )
+        Task.current_task().get_logger().report_plotly(
+            title="Confusion Matrix",
+            series=section,
+            figure=fig_cm_val,
+            iteration=iter_,
+        )
+        # Task.current_task().get_logger().report_plotly(
+        #     title='ROC & AUC',
+        #     series=section,
+        #     figure=fig_roc,
+        #     iteration=iter_
+        # )
+        Task.current_task().get_logger().report_table(
+            title="Tables",
+            series=f"precision_recall_fscore_support ({section})",
+            table_plot=df_table_support,
+            iteration=iter_,
+        )
+        Task.current_task().get_logger().report_table(
+            title="Tables",
+            series=f"f1_score ({section})",
+            table_plot=table,
+            iteration=iter_,
+        )
 
-    def visualize_images(self, 
-                         test_outputs, 
-                         epoch, 
-                         section, 
-                         row_x_col = (5,5),
-                         upload_to_clearml=True,
-                         gt_label_limit = 50
-                         ):
-        FOLDER_SAVE = 'logger_predict'
-        os.makedirs(f'{FOLDER_SAVE}', exist_ok=True)
+    def visualize_images(
+        self,
+        test_outputs,
+        epoch,
+        section,
+        row_x_col=(5, 5),
+        upload_to_clearml=True,
+        gt_label_limit=50,
+    ):
+        FOLDER_SAVE = "logger_predict"
+        os.makedirs(f"{FOLDER_SAVE}", exist_ok=True)
         n_row, n_col = row_x_col
         img_counter = 0
         mean = self.conf.data.mean
@@ -371,20 +511,20 @@ class Classifier(pl.LightningModule):
             batch_labels = test_outputs[batch_idx]["labels"]
             batch_preds = test_outputs[batch_idx]["preds"]
 
-            for sample_idx in range(len(batch_images)):                    
+            for sample_idx in range(len(batch_images)):
                 gt_label = batch_labels[sample_idx].item()
                 if gt_label_count[gt_label] > gt_label_limit:
                     continue
-                gt_label_count[gt_label]+=1
+                gt_label_count[gt_label] += 1
 
                 img = batch_images[sample_idx].permute(1, 2, 0).cpu().numpy()
                 img = denormalize_image(img, mean, std)
-                
+
                 pred_label = batch_preds[sample_idx].argmax(dim=-1).item()
                 confidence = batch_preds[sample_idx].softmax(dim=-1).max().item()
-                conf = round(confidence*100, 2)
+                conf = round(confidence * 100, 2)
 
-                title_color = 'green' if pred_label == gt_label else 'red'
+                title_color = "green" if pred_label == gt_label else "red"
                 name_gt = self.classes_name[gt_label]
                 name_pred = self.classes_name[pred_label]
 
@@ -407,16 +547,18 @@ class Classifier(pl.LightningModule):
                 # and clear the plot
                 if img_counter == n_row * n_col:
                     plt.tight_layout()
-                    naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}' 
-                    path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
+                    naming_file = (
+                        f"{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}"
+                    )
+                    path_file_predict = f"{FOLDER_SAVE}/{naming_file}.jpg"
                     plt.savefig(path_file_predict)
                     plt.close()
                     if upload_to_clearml:
                         Task.current_task().get_logger().report_image(
-                            f"{section.capitalize()}-Predict", 
-                            naming_file, 
+                            f"{section.capitalize()}-Predict",
+                            naming_file,
                             iteration=epoch,
-                            image= Image.open(path_file_predict)
+                            image=Image.open(path_file_predict),
                         )
                     # reset and create again
                     img_counter = 0
@@ -434,18 +576,19 @@ class Classifier(pl.LightningModule):
                         axes[col_idx].axis("off")
 
                 plt.tight_layout()
-                naming_file = f'{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}_last' 
-                path_file_predict =f'{FOLDER_SAVE}/{naming_file}.jpg' 
+                naming_file = (
+                    f"{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}_last"
+                )
+                path_file_predict = f"{FOLDER_SAVE}/{naming_file}.jpg"
                 plt.savefig(path_file_predict)
                 plt.close()
                 if upload_to_clearml:
                     Task.current_task().get_logger().report_image(
-                        f"{section.capitalize()}-Predict", 
-                        naming_file, 
+                        f"{section.capitalize()}-Predict",
+                        naming_file,
                         iteration=epoch,
-                        image= Image.open(path_file_predict)
+                        image=Image.open(path_file_predict),
                     )
                 img_counter = 0
                 fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
                 fig.subplots_adjust(hspace=0.5, wspace=0.5)
-
