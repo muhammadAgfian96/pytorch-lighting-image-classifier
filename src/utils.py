@@ -74,8 +74,10 @@ def receive_data_from_pipeline(args_from_pipeline):
 
 
 def override_config(params: dict, conf: TrainingConfig):
+    # write description for this function
     conf.aug.augmentor = params["aug"]["augmentor"]
     conf.aug.type_executions = params["aug"]["type_executions"]
+
     conf.data.batch = params["data"]["batch"]
     conf.data.dir = params["data"]["dir"]
     conf.data.dataset = params["data"].get("dataset", conf.data.dataset)
@@ -85,26 +87,23 @@ def override_config(params: dict, conf: TrainingConfig):
     conf.data.test_ratio = params["data"]["test_ratio"]
     conf.data.train_ratio = params["data"]["train_ratio"]
     conf.data.val_ratio = params["data"]["val_ratio"]
-    # conf.db.bucket_dataset = params['db']['bucket_dataset']
-    # conf.db.bucket_experiment = params['db']['bucket_experiment']
+
     conf.hyp.epoch = params["hyp"]["epoch"]
     conf.hyp.base_learning_rate = params["hyp"]["base_learning_rate"]
     conf.hyp.lr_scheduler = params["hyp"]["lr_scheduler"]
     conf.hyp.lr_step_size = params["hyp"]["lr_step_size"]
     conf.hyp.lr_decay_rate = params["hyp"]["lr_decay_rate"]
-    # conf.hyp.lr_step_milestones = params['hyp']['lr_step_milestones']
     conf.hyp.opt_momentum = params["hyp"]["opt_momentum"]
     conf.hyp.opt_name = params["hyp"]["opt_name"]
     conf.hyp.opt_weight_decay = params["hyp"]["opt_weight_decay"]
     conf.hyp.precision = params["hyp"]["precision"]
+
     conf.net.architecture = params["net"]["architecture"]
     conf.net.dropout = params["net"]["dropout"]
     conf.net.checkpoint_model = params["net"]["checkpoint_model"]
     conf.net.pretrained = params["net"]["pretrained"]
     conf.net.resume = params["net"]["resume"]
-    # if not args_pipeline['inside_pipeline']:
-    #     conf.data.category = sorted(os.listdir(conf.data.dir))
-    #     conf.net.num_class = len(os.listdir(conf.data.dir))
+
     return conf
 
 
@@ -148,21 +147,34 @@ def check_image_health(file_path):
         return False
 
 
-def split_dataset(images, train_ratio, val_ratio):
+def split_dataset(images_and_cls_idx, train_ratio, val_ratio):
     """
     Split the dataset into train, validation, and test sets.
     """
-    num_images = len(images)
+    num_images = len(images_and_cls_idx)
     train_count = int(train_ratio * num_images)
     val_count = int(val_ratio * num_images)
-    random.shuffle(images)
-    train = images[:train_count]
-    val = images[train_count : train_count + val_count]
-    test = images[train_count + val_count :]
+    random.shuffle(images_and_cls_idx)
+    train = images_and_cls_idx[:train_count]
+    val = images_and_cls_idx[train_count : train_count + val_count]
+    test = images_and_cls_idx[train_count + val_count :]
     return train, val, test
 
 
 def get_list_data(config: TrainingConfig):
+    """
+    Get the list of images and labels.
+    return
+    - data, 
+    - train_set, val_set, test_set, 
+        the_set = [
+            (image_path, label),
+            (image_path, label),
+            (image_path, label),
+        ]
+    - metadata, 
+    - class_names
+    """
     test_dir = "/workspace/current_dataset_test"
     dedicated_test_dataset = os.path.exists(test_dir)
 
@@ -195,18 +207,18 @@ def get_list_data(config: TrainingConfig):
     for label in class_names:
         label_folder = join(config.data.dir, label)
         for file in os.listdir(label_folder):
-            image_file = join(label_folder, file)
-            if check_image_health(image_file):
-                data[label].append((image_file, class_names.index(label)))
+            img_path = join(label_folder, file)
+            if check_image_health(img_path):
+                data[label].append((img_path, class_names.index(label)))
 
     if dedicated_test_dataset:
         test_data = {label: [] for label in class_names_test}
         for label in class_names_test:
             label_folder = join(test_dir, label)
             for file in os.listdir(label_folder):
-                image_file = join(label_folder, file)
-                if check_image_health(image_file):
-                    test_data[label].append((image_file, class_names.index(label)))
+                img_path = join(label_folder, file)
+                if check_image_health(img_path):
+                    test_data[label].append((img_path, class_names.index(label)))
 
     for label_class, images_file_cls_index in data.items():
         train, val, test = split_dataset(images_file_cls_index, train_ratio, val_ratio)
@@ -232,11 +244,6 @@ def get_list_data(config: TrainingConfig):
     metadata["val_count"] = len(val_set)
     metadata["test_count"] = len(test_set)
 
-    # test_set = {
-    #   'class_1' : [fp_1, fp_2, ... fp_n],
-    #   ...
-    #   'class_n' : [fp_1, fp_2, ... fp_n],
-    # }
     return data, train_set, val_set, test_set, metadata, class_names
 
 
@@ -270,14 +277,25 @@ def map_data_to_dict(d_data, local_path_dir):
     return mapped
 
 
-# def map_data_to_dict_list(list_d_set, local_path_dir):
-#     mapped = []
-#     list_save_local = [os.path.join(subdir, file) for subdir, _, files in os.walk(local_path_dir) for file in files]
-#     for i, local_path in enumerate(list_save_local):
-#         class_name, unique_id, url_fix = get_properties_from_local_path(d_data, local_path)
-#         mapped.append((url_fix, class_name, local_path))
-#     return mapped
+def map_urls_to_class_and_local_path(the_set:list, ls_urls:list[str]):
+    # Create a reverse mapping of local_path to class
+    local_path_to_class = {}
+    for local_path, cls_idx  in the_set:
+        class_name = local_path.split('/')[-2]
+        local_path_to_class[local_path] = class_name
 
+    output = []
+    for url in ls_urls:
+        # Extract the unique_id from the URL
+        unique_id = url.split("/")[-1]
+
+        # Find the corresponding local path and class
+        for local_path, cls in local_path_to_class.items():
+            if unique_id in local_path:
+                output.append((url, cls, local_path))
+                break
+
+    return output
 
 def make_graph_performance(torchscript_performance, onnx_performance):
     print("Generating Graph Performance")

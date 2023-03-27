@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from config.default import TrainingConfig
 from src.helper.data_helper import MinioDatasetDownloader
-from src.utils import get_list_data, map_data_to_dict, read_yaml
+from src.utils import get_list_data, map_data_to_dict, map_urls_to_class_and_local_path, read_yaml
 
 
 class ImageDatasetBinsho(Dataset):
@@ -62,7 +62,7 @@ class ImageDataModule(pl.LightningDataModule):
                 if "s3://10.8.0.66:9000" in self.conf.data.dataset:
                     self.__download_single_link_s3()
 
-                elif isinstance(self.conf.data.dataset) == isinstance({}):
+                elif isinstance(self.conf.data.dataset, dict):
                     self.__download_dict_data(self.conf.data.dataset, prefix_log='dict')
                     self.data_dir = self.conf.data.dir = "/workspace/current_dataset"
 
@@ -129,21 +129,26 @@ class ImageDataModule(pl.LightningDataModule):
 
     def __handle_downloaded_data(self):
         print("✅ downloaded data:", self.conf.data.dir)
+        print("📂 list of data:", os.listdir(self.conf.data.dir))
+        print("📑 splitting to train, val, test...")
         self.prepare_data_has_downloaded = True
         (
-                    self.ddata_by_label,
-                    self.ls_train_set,
-                    self.ls_val_set,
-                    self.ls_test_set,
-                    self.d_metadata,
-                    self.classes_name,
-                ) = get_list_data(config=self.conf)
+            self.ddata_by_label,
+            self.ls_train_set,
+            self.ls_val_set,
+            self.ls_test_set,
+            self.d_metadata,
+            self.classes_name,
+        ) = get_list_data(config=self.conf)
 
-        if self.ls_test_map_dedicated:
-            self.ls_test_map_dedicated = map_data_to_dict(
-                        d_data=self.ls_test_set,
-                        local_path_dir="/workspace/current_dataset",
-                    )
+        if self.ls_test_map_dedicated is None:
+            print("😓 No test map dedicated, using test set from training split")
+            self.ls_test_map_dedicated = map_urls_to_class_and_local_path(
+                    the_set=self.ls_test_set,
+                    ls_urls=self.ls_all_urls
+                )
+
+
         print("metadata:", self.d_metadata)
         print("classname:", self.classes_name)
         self.__log_distribution_data_clearml(self.d_metadata)
@@ -223,6 +228,11 @@ class ImageDataModule(pl.LightningDataModule):
             self.ls_test_map_dedicated = map_data_to_dict(
                 d_data=d_test, local_path_dir=self.test_local_path
             )
+        else:
+            print("⚠️ test dataset is empty!")
+            self.ls_all_urls = []
+            for class_name, ls_url in d_train.items():
+                self.ls_all_urls += ls_url
 
     def __verify_class_train_and_test(self, d_train, d_test):
         class_name_train = d_train.keys()
@@ -315,6 +325,17 @@ class ImageDataModule(pl.LightningDataModule):
     def __extract_list_link_dataset_yaml(self):
         """
         Extract list link dataset from yaml file.
+        return:
+            - d_train: dict
+                {"class_name": 
+                    [
+                        url_file_1,
+                        ...,
+                        url_file_n,
+                    ],
+                 ...
+                }
+            - d_test: dict
         """
         print("path_yaml_config:", self.path_yaml_dataset)
         datasets_yaml = read_yaml(self.path_yaml_dataset)
