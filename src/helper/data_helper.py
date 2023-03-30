@@ -33,7 +33,7 @@ class MinioDatasetDownloader:
         # Iterate over the classes in the dataset
         for class_name, urls in self.dataset.items():
             # Create the class directory if it doesn't exist
-            class_dir = os.path.join(self.download_dir, class_name)
+            class_dir = os.path.join(self.download_dir, class_name.capitalize())
             os.makedirs(class_dir, exist_ok=True)
 
             # Use a thread pool to download each file in parallel

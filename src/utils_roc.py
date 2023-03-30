@@ -89,6 +89,9 @@ def generate_plot_one_vs_rest(class_names:list,
                                 **kwargs
                               ):
     # Plots the Probability Distributions and the ROC Curves One vs Rest
+    print("Generating plots for One vs Rest")
+    if task is None:
+        return
     os.makedirs(path_to_save, exist_ok = True)
     ls_plts = []
     ls_path_figures = []
@@ -160,13 +163,16 @@ def generate_plot_one_vs_rest(class_names:list,
     ls_path_figures.append(filepath_fig)
     ls_plts.append(plt.gcf())
 
-    return ls_path_figures, ls_plts
+    return
 
 def generate_plot_one_vs_one(class_names, gt_labels, 
                              preds_softmax, path_to_save='logger_roc_ovo',
                              task:Task|None=None, **d_task ):
     # Plots the Probability Distributions and the ROC Curves One vs One
+    if task is None:
+        return
     os.makedirs(path_to_save, exist_ok = True)
+    print('Generating Plots One vs One')
 
     # Generates combinations of classes
     classes_combinations = []
@@ -212,7 +218,6 @@ def generate_plot_one_vs_one(class_names, gt_labels,
             start_pos_bottom += n_cols*2
 
         if pos_bottom % max_plot_in_fig == 0:
-            print('CREATED')
             plt.tight_layout()
             filepath_fig = os.path.join(path_to_save, f'roc_ovo_{fig_count}.png')
             plt.savefig(filepath_fig)
@@ -297,4 +302,4 @@ def generate_plot_one_vs_one(class_names, gt_labels,
         i += 1
         print(f"{k} ROC AUC OvO: {roc_auc_ovo[k]:.4f}")
     print(f"average ROC AUC OvO: {avg_roc_auc/i:.4f}")
-    return ls_path_figures, ls_plts
+    return

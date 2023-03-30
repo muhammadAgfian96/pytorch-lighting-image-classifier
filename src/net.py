@@ -441,8 +441,9 @@ class Classifier(pl.LightningModule):
         else:
             iter_ = self.current_epoch
 
-        if (self.current_epoch == self.conf.hyp.epoch - 1) and \
-            (section.lower() == "test" or section.lower() == "validation"):
+        if (self.current_epoch == self.conf.hyp.epoch - 1 \
+            and section.lower() == "validation") or \
+            section.lower() == "test":
             # report ROC if last epoch
             print('report ROC if last epoch')
             self.__roc_plot(probs, labels_epoch, section)
