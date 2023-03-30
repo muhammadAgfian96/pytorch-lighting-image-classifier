@@ -351,13 +351,8 @@ class Classifier(pl.LightningModule):
 
     def __roc_plot(self, preds_softmax, labels, section):
         os.makedirs('logger_roc', exist_ok=True)
-
-        # print(preds_softmax.shape, labels.shape)
-        print('preds_softmax', preds_softmax)
-        print('labels', labels)
         gt_truth = [self.classes_name[idx_lbl] for idx_lbl in labels.cpu().tolist()]
         preds_softmax_np = preds_softmax.detach().cpu().numpy()
-
         params_task_ovr = {
             'title': f"ROC OvR {section}",
             'series': 'OneVsRest',
@@ -368,24 +363,23 @@ class Classifier(pl.LightningModule):
             'series': 'OneVsOne_',
             'iteration': self.current_epoch,
         }
-        ls_path_ovr, ls_plt_ovr = generate_plot_one_vs_rest(
+        
+        generate_plot_one_vs_rest(
             class_names=self.classes_name,
             gt_labels=gt_truth,
             preds_softmax=preds_softmax_np,
             path_to_save='logger_roc',
             task=Task.current_task(),
             **params_task_ovr,
-
         )
-        ls_path_ovo, ls_plt_ovo = generate_plot_one_vs_one(
+        
+        generate_plot_one_vs_one(
             class_names=self.classes_name,
             gt_labels=gt_truth,
             preds_softmax=preds_softmax_np,
-            task=Task.current_task(),
+            task=Task.current_task() if len(self.classes_name) <= 10 else None,
             **params_task_ovo,
         )
-
-        return ls_plt_ovr, ls_plt_ovo
 
     def __table_f1_prec_rec_sup(self, preds, labels):
         probs = torch.softmax(preds, dim=-1)
@@ -447,7 +441,7 @@ class Classifier(pl.LightningModule):
         else:
             iter_ = self.current_epoch
 
-        if (self.current_epoch >2) and \
+        if (self.current_epoch == self.conf.hyp.epoch - 1) and \
             (section.lower() == "test" or section.lower() == "validation"):
             # report ROC if last epoch
             print('report ROC if last epoch')

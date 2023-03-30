@@ -39,7 +39,7 @@ Task.current_task().set_script(
 )
 Task.current_task().set_base_docker(
     docker_image="pytorch/pytorch:latest",
-    docker_arguments=["--ipc=host", "--gpus=all", "-e PYTHONPATH=/workspace"],
+    docker_arguments=["--shm-size=8g","-e PYTHONPATH=/workspace"],
     docker_setup_bash_script=[
         "apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx"
         " libsm6 libxext6 libxrender-dev"
@@ -105,7 +105,7 @@ path_yaml_config = "/workspace/config/datasets.yaml"
 path_yaml_config = Task.current_task().connect_configuration(
     path_yaml_config, "datasets.yaml"
 )
-task.set_tags(["Template_v1.1"])
+task.set_tags(["Template_v1.3"])
 # Task.current_task().execute_remotely()
 
 
