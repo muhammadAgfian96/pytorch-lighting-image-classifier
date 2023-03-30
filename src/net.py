@@ -23,7 +23,7 @@ from torchmetrics import (
     ConfusionMatrix,
 )
 from torchmetrics.functional import f1_score
-
+from utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 from config.default import TrainingConfig
 
 
@@ -208,16 +208,6 @@ class Classifier(pl.LightningModule):
                 "train_loss", loss_epoch
             )
 
-        # if self.current_epoch > 2:
-        #     self.visualize_images(
-        #         test_outputs=outs,
-        #         section='train',
-        #         epoch=self.current_epoch,
-        #         upload_to_clearml=True,
-        #         row_x_col= (3, 3),
-        #         gt_label_limit= 15
-        #     )
-
     def validation_step(self, batch, batch_idx):
         imgs, y = batch
         y_hat = self(imgs)
@@ -273,7 +263,7 @@ class Classifier(pl.LightningModule):
             Task.current_task().get_logger().report_single_value("val_acc", acc_epoch)
             Task.current_task().get_logger().report_single_value("val_loss", loss_epoch)
 
-        if self.current_epoch % 25 == 0:
+        if self.current_epoch % 25 == 0 or self.current_epoch == self.conf.hyp.epoch - 1:
             self.visualize_images(
                 test_outputs=outputs,
                 section="validation",
@@ -359,25 +349,43 @@ class Classifier(pl.LightningModule):
         best_score = scores_f1[idx_score_max].item()
         return best_score, best_threshold
 
-    def __roc_plot(self, preds_logits, labels):
-        self.roc.update(preds_logits, labels)
-        self.auroc.update(preds_logits, labels)
-        # Get the false positive rate, true positive rate, and threshold for class 1
-        result_roc = self.roc.compute()
-        result_auc = self.auroc.compute()
-        print("result_roc", result_roc)
-        print("result_auc", result_auc)
-        # Create a plotly graph of the ROC curve and the AUROC curve
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=roc_fpr, y=roc_tpr, name="ROC Curve"))
-        fig.add_trace(go.Scatter(x=auroc_fpr[1], y=auroc_tpr[1], name="AUROC Curve"))
-        fig.update_layout(
-            title="ROC and AUROC Curves",
-            xaxis_title="False Positive Rate",
-            yaxis_title="True Positive Rate",
+    def __roc_plot(self, preds_softmax, labels, section):
+        os.makedirs('logger_roc', exist_ok=True)
+
+        # print(preds_softmax.shape, labels.shape)
+        print('preds_softmax', preds_softmax)
+        print('labels', labels)
+        gt_truth = [self.classes_name[idx_lbl] for idx_lbl in labels.cpu().tolist()]
+        preds_softmax_np = preds_softmax.detach().cpu().numpy()
+
+        params_task_ovr = {
+            'title': f"ROC OvR {section}",
+            'series': 'OneVsRest',
+            'iteration': self.current_epoch,
+        }
+        params_task_ovo = {
+            'title': f"ROC OvO {section}",
+            'series': 'OneVsOne_',
+            'iteration': self.current_epoch,
+        }
+        ls_path_ovr, ls_plt_ovr = generate_plot_one_vs_rest(
+            class_names=self.classes_name,
+            gt_labels=gt_truth,
+            preds_softmax=preds_softmax_np,
+            path_to_save='logger_roc',
+            task=Task.current_task(),
+            **params_task_ovr,
+
+        )
+        ls_path_ovo, ls_plt_ovo = generate_plot_one_vs_one(
+            class_names=self.classes_name,
+            gt_labels=gt_truth,
+            preds_softmax=preds_softmax_np,
+            task=Task.current_task(),
+            **params_task_ovo,
         )
 
-        return fig
+        return ls_plt_ovr, ls_plt_ovo
 
     def __table_f1_prec_rec_sup(self, preds, labels):
         probs = torch.softmax(preds, dim=-1)
@@ -421,27 +429,30 @@ class Classifier(pl.LightningModule):
         # Take the highest probability as the predicted class
         # Convert new_preds to a numpy array
         probs = torch.softmax(preds_epoch, dim=-1)
-        _, preds_top1 = torch.max(probs, dim=-1)
-        # print('preds_top1', preds_top1)
-        # print('preds_epoch', preds_epoch)
-        # print('labels_epoch', labels_epoch)
+        probs_top1, preds_top1 = torch.max(probs, dim=-1)
 
         fig_cm_val = self.__confusion_matrix(preds_epoch, labels_epoch)
         best_score_f1, best_threshold_f1 = self.__find_best_f1_score(
             preds_epoch, labels_epoch
         )
-        # fig_roc = self.__roc_plot(preds_epoch, labels_epoch)
         df_table_support = self.__table_f1_prec_rec_sup(preds_epoch, labels_epoch)
         table = pd.DataFrame.from_dict(
             {"Threshold": [best_threshold_f1], "F1 Score": [best_score_f1]}
         )
 
+        
         # fig_cm_val.update_xaxes(side="top")
         if section.lower() == "test":
             iter_ = self.conf.hyp.epoch - 1
-
         else:
             iter_ = self.current_epoch
+
+        if (self.current_epoch >2) and \
+            (section.lower() == "test" or section.lower() == "validation"):
+            # report ROC if last epoch
+            print('report ROC if last epoch')
+            self.__roc_plot(probs, labels_epoch, section)
+
         for param_group in self.optimizers().optimizer.param_groups:
             Task.current_task().get_logger().report_scalar(
                 title="LR",
@@ -449,6 +460,7 @@ class Classifier(pl.LightningModule):
                 value=param_group["lr"],
                 iteration=iter_,
             )
+
         Task.current_task().get_logger().report_scalar(
             title="Accuracy", series=section, value=acc_epoch, iteration=iter_
         )
@@ -467,12 +479,6 @@ class Classifier(pl.LightningModule):
             figure=fig_cm_val,
             iteration=iter_,
         )
-        # Task.current_task().get_logger().report_plotly(
-        #     title='ROC & AUC',
-        #     series=section,
-        #     figure=fig_roc,
-        #     iteration=iter_
-        # )
         Task.current_task().get_logger().report_table(
             title="Tables",
             series=f"precision_recall_fscore_support ({section})",
@@ -592,3 +598,5 @@ class Classifier(pl.LightningModule):
                 img_counter = 0
                 fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
                 fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
+
