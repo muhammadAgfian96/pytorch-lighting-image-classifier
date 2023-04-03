@@ -9,3 +9,5 @@ export_model
 debug
 logger_predict
 exports
+.ruff*
+*.png

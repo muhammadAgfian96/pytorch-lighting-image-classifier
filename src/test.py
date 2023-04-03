@@ -117,8 +117,8 @@ class ModelPredictor:
                 "accuracy": self.get_accuracy_score(y_pred=preds, y_true=grounds),
                 "speed": round(sum(time_prediction) / len(time_prediction), 6),
                 "total_prediction": round(end_time_total - start_time_total, 3),
-                "vram": self.end_vram_onnx - self.awal_vram_onnx,
-                "ram": self.end_ram_onnx - self.awal_ram_onnx,
+                "vram": abs(self.end_vram_onnx - self.awal_vram_onnx),
+                "ram": abs(self.end_ram_onnx - self.awal_ram_onnx),
             },
             "voxel_fiftyone": d,
         }
@@ -177,8 +177,8 @@ class ModelPredictor:
                 "accuracy": self.get_accuracy_score(y_pred=preds, y_true=grounds),
                 "speed": round(sum(time_prediction) / len(time_prediction), 6),
                 "total_prediction": round(end_time_total - start_time_total, 3),
-                "vram": self.awal_vram_torch_script - self.end_vram_torch_script,
-                "ram": self.awal_ram_torch_script - self.end_ram_torch_script,
+                "vram": abs(self.awal_vram_torch_script - self.end_vram_torch_script),
+                "ram": abs(self.awal_ram_torch_script - self.end_ram_torch_script),
             },
             "voxel_fiftyone": d,
         }

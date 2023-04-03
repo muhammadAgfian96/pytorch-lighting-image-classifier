@@ -287,15 +287,15 @@ def generate_plot_one_vs_one(class_names, gt_labels,
 
         try:
             roc_auc_ovo[title] = roc_auc_score(df_aux['class'], df_aux['prob'])
-            ax_bottom.set_title(f"ROC Curve OvO {roc_auc_ovo[title]}", fontsize=10)
+            ax_bottom.set_title(f"ROC Curve OvO {roc_auc_ovo[title]:.3f}", fontsize=10)
         except ValueError as e:
             print(f"Error calculating the ROC AUC OvO: {e}")
             print(df_aux.head())
             ax_bottom.set_title("ROC Curve OvO: (AUC = 'Error')", fontsize=10)
         except Exception as e:
-            print(f"Error calculating the ROC AUC OvR for class {c}: {e}")
+            print(f"Error calculating the ROC AUC OvO: {e}")
             print(df_aux.head())
-            ax_bottom.set_title("ROC Curve OvR: (AUC = 'Error')", fontsize=10)
+            ax_bottom.set_title("ROC Curve OvO: (AUC = 'Error')", fontsize=10)
         
         i+=1
         count_graph += 1
