@@ -105,7 +105,7 @@ path_yaml_config = "/workspace/config/datasets.yaml"
 path_yaml_config = Task.current_task().connect_configuration(
     path_yaml_config, "datasets.yaml"
 )
-task.set_tags(["Template_v1.3"])
+task.set_tags(["Template_v1.3.2"])
 # Task.current_task().execute_remotely()
 
 
@@ -140,6 +140,8 @@ task.set_model_label_enumeration(
 )
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
+
+task.add_tags(conf.net.architecture)
 
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
