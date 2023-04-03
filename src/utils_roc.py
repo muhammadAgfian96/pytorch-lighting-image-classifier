@@ -146,8 +146,17 @@ def generate_plot_one_vs_rest(class_names:list,
         plot_roc_curve(tpr, fpr, scatter = False, ax = ax_bottom)
 
         # # Calculates the ROC AUC OvR
-        roc_auc_ovr[c] = roc_auc_score(df_aux['class'], df_aux['prob'])
-        ax_bottom.set_title(f"ROC Curve OvR: (AUC = {roc_auc_ovr[c]:.3f})", fontsize=10)
+        try:
+            roc_auc_ovr[c] = roc_auc_score(df_aux['class'], df_aux['prob'])
+            ax_bottom.set_title(f"ROC Curve OvR: (AUC = {roc_auc_ovr[c]:.3f})", fontsize=10)
+        except ValueError as e:
+            print(f"Error calculating the ROC AUC OvR for class {c}: {e}")
+            print(df_aux.head())
+            ax_bottom.set_title("ROC Curve OvR: (AUC = 'Error')", fontsize=10)
+        except Exception as e:
+            print(f"Error calculating the ROC AUC OvR for class {c}: {e}")
+            print(df_aux.head())
+            ax_bottom.set_title("ROC Curve OvR: (AUC = 'Error')", fontsize=10)
         i+=1
 
     plt.tight_layout()
@@ -275,8 +284,19 @@ def generate_plot_one_vs_one(class_names, gt_labels,
         plot_roc_curve(tpr, fpr, scatter = False, ax = ax_bottom)
         
         # Calculates the ROC AUC OvO
-        roc_auc_ovo[title] = roc_auc_score(df_aux['class'], df_aux['prob'])
-        ax_bottom.set_title(f"ROC Curve OvO {roc_auc_ovo[title]}", fontsize=10)
+
+        try:
+            roc_auc_ovo[title] = roc_auc_score(df_aux['class'], df_aux['prob'])
+            ax_bottom.set_title(f"ROC Curve OvO {roc_auc_ovo[title]}", fontsize=10)
+        except ValueError as e:
+            print(f"Error calculating the ROC AUC OvO: {e}")
+            print(df_aux.head())
+            ax_bottom.set_title("ROC Curve OvO: (AUC = 'Error')", fontsize=10)
+        except Exception as e:
+            print(f"Error calculating the ROC AUC OvR for class {c}: {e}")
+            print(df_aux.head())
+            ax_bottom.set_title("ROC Curve OvR: (AUC = 'Error')", fontsize=10)
+        
         i+=1
         count_graph += 1
 

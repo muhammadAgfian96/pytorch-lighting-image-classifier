@@ -354,13 +354,13 @@ class Classifier(pl.LightningModule):
         gt_truth = [self.classes_name[idx_lbl] for idx_lbl in labels.cpu().tolist()]
         preds_softmax_np = preds_softmax.detach().cpu().numpy()
         params_task_ovr = {
-            'title': f"ROC OvR {section}",
+            'title': f"ROC {section}",
             'series': 'OneVsRest',
             'iteration': self.current_epoch,
         }
         params_task_ovo = {
-            'title': f"ROC OvO {section}",
-            'series': 'OneVsOne_',
+            'title': f"ROC {section}",
+            'series': 'OneVsOne',
             'iteration': self.current_epoch,
         }
         
@@ -444,9 +444,12 @@ class Classifier(pl.LightningModule):
         if (self.current_epoch == self.conf.hyp.epoch - 1 \
             and section.lower() == "validation") or \
             section.lower() == "test":
-            # report ROC if last epoch
-            print('report ROC if last epoch')
-            self.__roc_plot(probs, labels_epoch, section)
+            try:
+                # report ROC if last epoch
+                print('report ROC if last epoch')
+                self.__roc_plot(probs, labels_epoch, section)
+            except Exception as e:
+                print(f"Error in ROC plot: {e}")
 
         for param_group in self.optimizers().optimizer.param_groups:
             Task.current_task().get_logger().report_scalar(
