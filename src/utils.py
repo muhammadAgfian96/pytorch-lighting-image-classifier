@@ -197,12 +197,12 @@ def get_list_data(config: TrainingConfig):
     }
 
     class_names = sorted(
-        list(set([lbl.capitalize() for lbl in os.listdir(config.data.dir)]))
+        list(set([lbl.capitalize() for lbl in os.listdir(config.data.dir)])) # need_check_capital_class_name
     )
 
     if dedicated_test_dataset:
         class_names_test = sorted(
-            list(set([lbl.capitalize() for lbl in os.listdir(test_dir)]))
+            list(set([lbl.capitalize() for lbl in os.listdir(test_dir)])) # need_check_capital_class_name
         )
 
     data = {label: [] for label in class_names}
@@ -213,7 +213,7 @@ def get_list_data(config: TrainingConfig):
         for file in os.listdir(label_folder):
             img_path = join(label_folder, file)
             if check_image_health(img_path):
-                label = label.capitalize()
+                label = label.capitalize() # need_check_capital_class_name
                 data[label].append((img_path, class_names.index(label)))
 
     if dedicated_test_dataset:

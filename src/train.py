@@ -14,6 +14,7 @@ from src.data import ImageDataModule
 from src.net import Classifier
 from src.utils import (export_upload_model, make_graph_performance,
                        override_config, receive_data_from_pipeline)
+from src.test import ModelPredictor
 
 cwd = os.getcwd()
 os.environ["PYTHONPATH"] = cwd
@@ -105,7 +106,7 @@ path_yaml_config = "/workspace/config/datasets.yaml"
 path_yaml_config = Task.current_task().connect_configuration(
     path_yaml_config, "datasets.yaml"
 )
-task.set_tags(["Template_v1.3.2"])
+task.set_tags(["Template_v1.3.5"])
 # Task.current_task().execute_remotely()
 
 
@@ -141,7 +142,6 @@ task.set_model_label_enumeration(
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
 
-task.add_tags(conf.net.architecture)
 
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
@@ -222,8 +222,12 @@ path_onnx = os.path.join(path_export_model, f"onnx-{conf.net.architecture}.onnx"
 path_torchscript = os.path.join(
     path_export_model, f"torchscript-{conf.net.architecture}.pt"
 )
-model_classifier.to_onnx(path_onnx, input_sample)
+
+print('Exporting model to TorchScript...')
 torch.jit.save(model_classifier.to_torchscript(), path_torchscript)
+
+print('Exporting model to ONNX...')
+model_classifier.to_onnx(path_onnx, input_sample)
 
 print(
     """
@@ -233,7 +237,6 @@ print(
 """
 )
 
-from src.test import ModelPredictor
 
 model_tester = ModelPredictor(
     input_size=conf.data.input_size, mean=conf.data.mean, std=conf.data.std

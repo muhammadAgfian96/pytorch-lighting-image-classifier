@@ -11,7 +11,7 @@ import pytorch_lightning as pl
 import timm
 import torch
 import torch.optim as optim
-from clearml import Task
+from clearml import Task, InputModel
 from PIL import Image
 from rich import print
 from sklearn.metrics import precision_recall_fscore_support
@@ -25,6 +25,7 @@ from torchmetrics import (
 from torchmetrics.functional import f1_score
 from utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 from config.default import TrainingConfig
+from config.list_models import list_models as ls_models_library
 
 
 def denormalize_image(image, mean, std):
@@ -85,13 +86,34 @@ class Classifier(pl.LightningModule):
     def __init__(self, conf: TrainingConfig):
         super().__init__()
         self.conf = conf
+
+        if self.conf.net.architecture not in ls_models_library and \
+            len(self.conf.net.architecture) == len("4d609a6b07ed447bae47af9a6fbfb999"):
+            model_old = InputModel(model_id=self.conf.net.architecture)
+            self.conf.net.architecture = model_old.config_dict['net']
+            print('dowloding model', self.conf.net.architecture)
+            print('old model labels', model_old.labels)
+            model_old_path = model_old.get_weights()
+            self.conf.net.checkpoint_model = model_old_path
+
         self.model = timm.create_model(
             self.conf.net.architecture,
             pretrained=self.conf.net.checkpoint_model,
             num_classes=self.conf.net.num_class,
             drop_rate=self.conf.net.dropout,
+            # checkpoint_path=(self.conf.net.checkpoint_model),
         )
+        if self.conf.net.checkpoint_model is not None:
+            # torchscript way
+            # loaded_script_model = torch.jit.load(self.conf.net.checkpoint_model)
+            # self.model.load_state_dict(loaded_script_model.state_dict())
 
+            # raw way
+            checkpoint = torch.load(self.conf.net.checkpoint_model)
+            self.model.load_state_dict(checkpoint["state_dict"], strict=False)
+            Task.current_task().add_tags('resume')
+
+        Task.current_task().add_tags(conf.net.architecture)
         self.classes_name = self.conf.data.category
 
         self.train_loss = torch.nn.CrossEntropyLoss()
