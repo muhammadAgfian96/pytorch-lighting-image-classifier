@@ -25,16 +25,21 @@ class MinioDatasetDownloader:
         )
 
     def download_dataset(self, max_workers=10):
+        """
+        return: class name
+        """
         # Create the download directory if it doesn't exist
         if os.path.exists(self.download_dir):
             shutil.rmtree(self.download_dir)
         os.makedirs(self.download_dir, exist_ok=True)
 
+        ls_class = set()
         # Iterate over the classes in the dataset
         for class_name, urls in self.dataset.items():
             # Create the class directory if it doesn't exist
-            class_dir = os.path.join(self.download_dir, class_name.capitalize())
+            class_dir = os.path.join(self.download_dir, class_name.capitalize()) # need_check_capital_class_name
             os.makedirs(class_dir, exist_ok=True)
+            ls_class.add(class_name.capitalize()) # need_check_capital_class_name
 
             # Use a thread pool to download each file in parallel
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -53,6 +58,7 @@ class MinioDatasetDownloader:
                         object_name,
                         destination_path,
                     )
+        return ls_class
 
 
 if __name__ == "__main__":

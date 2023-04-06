@@ -67,6 +67,7 @@ class ImageDataModule(pl.LightningDataModule):
                     self.data_dir = self.conf.data.dir = "/workspace/current_dataset"
 
                 elif self.conf.data.dataset == "datasets.yaml":
+                    print('Downloading dataset from yaml file...')
                     self.__download_dataset_from_yaml()
 
                 else:
@@ -75,7 +76,7 @@ class ImageDataModule(pl.LightningDataModule):
                 self.__handle_downloaded_data()
 
             except Exception as e:
-                print('🚨', e)
+                print('🚨 Error:', e)
                 print("⛔ Exit Programs")
                 exit()
         else:
@@ -211,10 +212,13 @@ class ImageDataModule(pl.LightningDataModule):
         print(f"⏳ [{prefix_log.upper()}] download duration :", round(duration, 3), "seconds")
         
     def __download_dataset_from_yaml(self):
+        print("Extracting dataset from yaml file")
         d_train, d_test = self.__extract_list_link_dataset_yaml()
+        print("Verify train and test dataset")
         self.__verify_class_train_and_test(d_train, d_test)
 
         # download train
+        print("Downloading train dataset")
         self.__download_dict_data(dict_data=d_train, prefix_log="TRAIN")
         self.data_dir = self.conf.data.dir = "/workspace/current_dataset"
 
@@ -225,14 +229,17 @@ class ImageDataModule(pl.LightningDataModule):
                 download_dir=self.test_local_path,
                 prefix_log="TEST"
             )
+            print('mapping test dataset to dict')
             self.ls_test_map_dedicated = map_data_to_dict(
-                d_data=d_test, local_path_dir=self.test_local_path
+                d_data=d_test, 
+                local_path_dir=self.test_local_path
             )
         else:
             print("⚠️ test dataset is empty!")
             self.ls_all_urls = []
             for class_name, ls_url in d_train.items():
                 self.ls_all_urls += ls_url
+        print('[Done] Downloading dataset from yaml file')
 
     def __verify_class_train_and_test(self, d_train, d_test):
         class_name_train = d_train.keys()
@@ -362,7 +369,7 @@ class ImageDataModule(pl.LightningDataModule):
         print("mapping to dict_class..")
         for d_file in ls_url_files_train:
             url_file = d_file["name"]
-            class_name = url_file.split("/")[-2]
+            class_name = url_file.split("/")[-2].capitalize() # need_check_capital_class_name
             if class_name not in d_map.keys():
                 d_map[class_name] = []
             d_map[class_name].append(url_file)

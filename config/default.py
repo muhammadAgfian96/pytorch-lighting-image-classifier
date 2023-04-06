@@ -146,7 +146,7 @@ class Augmentations:
 @dataclass
 class Model:
     # architecture:str = 'edgenext_x_small'
-    architecture:str = 'edgenext_x_small'
+    architecture:str = '4d609a6b07ed447bae47af9a6fbfb999'
     pretrained:bool = True
     dropout:float = 0.0
     resume:bool = False
@@ -156,7 +156,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 10
+    epoch:int = 5
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer

@@ -52,6 +52,7 @@ class ModelPredictor:
     def preprocess_image(self, image):
         return self.transform(image=image)["image"]
 
+    # ONNX -------------------------------------------------
     def load_onnx_model(self, model_path):
         self.awal_ram_onnx = self.__get_ram()
         self.awal_vram_onnx = self.__get_gpu_vram()
@@ -124,6 +125,7 @@ class ModelPredictor:
         }
         return data_desc
 
+    # Torchscript -------------------------------------------------
     def load_torchscript_model(self, model_path):
         self.awal_ram_torch_script = self.__get_ram()
         self.awal_vram_torch_script = self.__get_gpu_vram()
@@ -184,11 +186,13 @@ class ModelPredictor:
         }
         return data_desc
 
+    # Lightining -------------------------------------------------
     def load_pytorch_lightning_checkpoint(self, checkpoint_path):
         # Load the checkpoint
         checkpoint = torch.load(
             checkpoint_path, map_location=lambda storage, loc: storage
         )
+        print(checkpoint.keys())
 
         # Extract the hyperparameters
         hparams = checkpoint["hyper_parameters"]
@@ -325,24 +329,24 @@ if __name__ == "__main__":
         input_size=224, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)
     )
     path_image = "current_dataset/Bean/0036.jpg"
-    # For ONNX model
-    predictor.load_onnx_model("exports/onnx-edgenext_x_small.onnx")
-    onnx_prediction = predictor.predict_onnx(cv2.imread(path_image))
-    print("onnx_prediction", onnx_prediction)
+    # # For ONNX model
+    # predictor.load_onnx_model("exports/onnx-edgenext_x_small.onnx")
+    # onnx_prediction = predictor.predict_onnx(cv2.imread(path_image))
+    # print("onnx_prediction", onnx_prediction)
 
-    # For TorchScript model
-    predictor.load_torchscript_model("exports/torchscript-edgenext_x_small.pt")
-    torchscript_prediction = predictor.predict_torchscript(cv2.imread(path_image))
-    print("torchscript_prediction", torchscript_prediction)
+    # # For TorchScript model
+    # predictor.load_torchscript_model("exports/torchscript-edgenext_x_small.pt")
+    # torchscript_prediction = predictor.predict_torchscript(cv2.imread(path_image))
+    # print("torchscript_prediction", torchscript_prediction)
 
     # For PyTorch Lightning checkpoint
     predictor.load_pytorch_lightning_checkpoint(
         "exports/best-ckpt-edgenext_x_small.ckpt"
     )
-    pytorch_lightning_prediction = predictor.predict_pytorch_lightning(
-        cv2.imread(path_image)
-    )
-    print("pytorch_lightning_prediction", pytorch_lightning_prediction)
+    # pytorch_lightning_prediction = predictor.predict_pytorch_lightning(
+    #     cv2.imread(path_image)
+    # )
+    # print("pytorch_lightning_prediction", pytorch_lightning_prediction)
 
     # result_bench = predictor.benchmark(
     #     image=cv2.imread(path_image),
