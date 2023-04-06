@@ -1,7 +1,7 @@
 # .SILENT: update-config
 
 IMAGE=torch-classifier:latest
-CONTAINER=classifier-torch-framework 
+CONTAINER=dev-pl-timm-training
 
 build:
 	docker build -f docker/Dockerfile -t $(IMAGE) .
@@ -12,13 +12,6 @@ dev:
 	-v ${PWD}:/workspace \
 	--shm-size=8g \
 	-v /home/agfian/clearml.conf:/root/clearml.conf \
-	--name dev-torch \
-	$(IMAGE) bash
-
-run-bg:
-	docker run -it -d --gpus all \
-	-e PYTHONPATH=/workspace \
-	-v ${PWD}:/workspace \
 	--name $(CONTAINER) \
 	$(IMAGE) bash
 
@@ -33,3 +26,6 @@ update-config:
 
 ls-models:
 	python -c "import timm; print(timm.list_models());" > list-models.txt
+
+exec:
+	docker exec -it $(CONTAINER) bash

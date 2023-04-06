@@ -156,7 +156,7 @@ class Model:
 
 @dataclass
 class HyperParameters(object):
-    epoch:int = 10
+    epoch:int = 5
     
     loss_fn = torch.nn.CrossEntropyLoss()
     # optimizer
