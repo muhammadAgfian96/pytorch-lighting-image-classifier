@@ -11,21 +11,17 @@ import pytorch_lightning as pl
 import timm
 import torch
 import torch.optim as optim
-from clearml import Task, InputModel
+from clearml import InputModel, Task
 from PIL import Image
 from rich import print
 from sklearn.metrics import precision_recall_fscore_support
-from torchmetrics import (
-    # AUROC, AUC, ROC,; F1Score, Precision, Recall,; PrecisionRecallCurve
-    AUROC,
-    ROC,
-    Accuracy,
-    ConfusionMatrix,
-)
+from torchmetrics import (  # AUROC, AUC, ROC,; F1Score, Precision, Recall,; PrecisionRecallCurve
+    AUROC, ROC, Accuracy, ConfusionMatrix)
 from torchmetrics.functional import f1_score
-from utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
+
 from config.default import TrainingConfig
 from config.list_models import list_models as ls_models_library
+from utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 
 
 def denormalize_image(image, mean, std):
@@ -87,12 +83,13 @@ class Classifier(pl.LightningModule):
         super().__init__()
         self.conf = conf
 
-        if self.conf.net.architecture not in ls_models_library and \
-            len(self.conf.net.architecture) == len("4d609a6b07ed447bae47af9a6fbfb999"):
+        if self.conf.net.architecture not in ls_models_library and len(
+            self.conf.net.architecture
+        ) == len("4d609a6b07ed447bae47af9a6fbfb999"):
             model_old = InputModel(model_id=self.conf.net.architecture)
-            self.conf.net.architecture = model_old.config_dict['net']
-            print('dowloding model', self.conf.net.architecture)
-            print('old model labels', model_old.labels)
+            self.conf.net.architecture = model_old.config_dict["net"]
+            print("dowloding model", self.conf.net.architecture)
+            print("old model labels", model_old.labels)
             model_old_path = model_old.get_weights()
             self.conf.net.checkpoint_model = model_old_path
 
@@ -111,7 +108,7 @@ class Classifier(pl.LightningModule):
             # raw way
             checkpoint = torch.load(self.conf.net.checkpoint_model)
             self.model.load_state_dict(checkpoint["state_dict"], strict=False)
-            Task.current_task().add_tags('resume')
+            Task.current_task().add_tags("resume")
 
         Task.current_task().add_tags(conf.net.architecture)
         self.classes_name = self.conf.data.category
@@ -285,7 +282,10 @@ class Classifier(pl.LightningModule):
             Task.current_task().get_logger().report_single_value("val_acc", acc_epoch)
             Task.current_task().get_logger().report_single_value("val_loss", loss_epoch)
 
-        if self.current_epoch % 25 == 0 or self.current_epoch == self.conf.hyp.epoch - 1:
+        if (
+            self.current_epoch % 25 == 0
+            or self.current_epoch == self.conf.hyp.epoch - 1
+        ):
             self.visualize_images(
                 test_outputs=outputs,
                 section="validation",
@@ -372,29 +372,29 @@ class Classifier(pl.LightningModule):
         return best_score, best_threshold
 
     def __roc_plot(self, preds_softmax, labels, section):
-        os.makedirs('logger_roc', exist_ok=True)
+        os.makedirs("logger_roc", exist_ok=True)
         gt_truth = [self.classes_name[idx_lbl] for idx_lbl in labels.cpu().tolist()]
         preds_softmax_np = preds_softmax.detach().cpu().numpy()
         params_task_ovr = {
-            'title': f"ROC {section}",
-            'series': 'OneVsRest',
-            'iteration': self.current_epoch,
+            "title": f"ROC {section}",
+            "series": "OneVsRest",
+            "iteration": self.current_epoch,
         }
         params_task_ovo = {
-            'title': f"ROC {section}",
-            'series': 'OneVsOne',
-            'iteration': self.current_epoch,
+            "title": f"ROC {section}",
+            "series": "OneVsOne",
+            "iteration": self.current_epoch,
         }
-        
+
         generate_plot_one_vs_rest(
             class_names=self.classes_name,
             gt_labels=gt_truth,
             preds_softmax=preds_softmax_np,
-            path_to_save='logger_roc',
+            path_to_save="logger_roc",
             task=Task.current_task(),
             **params_task_ovr,
         )
-        
+
         generate_plot_one_vs_one(
             class_names=self.classes_name,
             gt_labels=gt_truth,
@@ -456,19 +456,19 @@ class Classifier(pl.LightningModule):
             {"Threshold": [best_threshold_f1], "F1 Score": [best_score_f1]}
         )
 
-        
         # fig_cm_val.update_xaxes(side="top")
         if section.lower() == "test":
             iter_ = self.conf.hyp.epoch - 1
         else:
             iter_ = self.current_epoch
 
-        if (self.current_epoch == self.conf.hyp.epoch - 1 \
-            and section.lower() == "validation") or \
-            section.lower() == "test":
+        if (
+            self.current_epoch == self.conf.hyp.epoch - 1
+            and section.lower() == "validation"
+        ) or section.lower() == "test":
             try:
                 # report ROC if last epoch
-                print('report ROC if last epoch')
+                print("report ROC if last epoch")
                 self.__roc_plot(probs, labels_epoch, section)
             except Exception as e:
                 print(f"Error in ROC plot: {e}")
@@ -618,5 +618,3 @@ class Classifier(pl.LightningModule):
                 img_counter = 0
                 fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
                 fig.subplots_adjust(hspace=0.5, wspace=0.5)
-
-

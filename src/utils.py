@@ -165,14 +165,14 @@ def get_list_data(config: TrainingConfig):
     """
     Get the list of images and labels.
     return
-    - data, 
-    - train_set, val_set, test_set, 
+    - data,
+    - train_set, val_set, test_set,
         the_set = [
             (image_path, label),
             (image_path, label),
             (image_path, label),
         ]
-    - metadata, 
+    - metadata,
     - class_names
     """
     test_dir = "/workspace/current_dataset_test"
@@ -197,12 +197,16 @@ def get_list_data(config: TrainingConfig):
     }
 
     class_names = sorted(
-        list(set([lbl.capitalize() for lbl in os.listdir(config.data.dir)])) # need_check_capital_class_name
+        list(
+            set([lbl.capitalize() for lbl in os.listdir(config.data.dir)])
+        )  # need_check_capital_class_name
     )
 
     if dedicated_test_dataset:
         class_names_test = sorted(
-            list(set([lbl.capitalize() for lbl in os.listdir(test_dir)])) # need_check_capital_class_name
+            list(
+                set([lbl.capitalize() for lbl in os.listdir(test_dir)])
+            )  # need_check_capital_class_name
         )
 
     data = {label: [] for label in class_names}
@@ -213,7 +217,7 @@ def get_list_data(config: TrainingConfig):
         for file in os.listdir(label_folder):
             img_path = join(label_folder, file)
             if check_image_health(img_path):
-                label = label.capitalize() # need_check_capital_class_name
+                label = label.capitalize()  # need_check_capital_class_name
                 data[label].append((img_path, class_names.index(label)))
 
     if dedicated_test_dataset:
@@ -282,11 +286,11 @@ def map_data_to_dict(d_data, local_path_dir):
     return mapped
 
 
-def map_urls_to_class_and_local_path(the_set:list, ls_urls:list[str]):
+def map_urls_to_class_and_local_path(the_set: list, ls_urls: list[str]):
     # Create a reverse mapping of local_path to class
     local_path_to_class = {}
-    for local_path, cls_idx  in the_set:
-        class_name = local_path.split('/')[-2]
+    for local_path, cls_idx in the_set:
+        class_name = local_path.split("/")[-2]
         local_path_to_class[local_path] = class_name
 
     output = []
@@ -301,6 +305,7 @@ def map_urls_to_class_and_local_path(the_set:list, ls_urls:list[str]):
                 break
 
     return output
+
 
 def make_graph_performance(torchscript_performance, onnx_performance):
     print("Generating Graph Performance")

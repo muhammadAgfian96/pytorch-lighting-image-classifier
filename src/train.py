@@ -12,9 +12,9 @@ from rich import print
 from config.default import TrainingConfig
 from src.data import ImageDataModule
 from src.net import Classifier
+from src.test import ModelPredictor
 from src.utils import (export_upload_model, make_graph_performance,
                        override_config, receive_data_from_pipeline)
-from src.test import ModelPredictor
 
 cwd = os.getcwd()
 os.environ["PYTHONPATH"] = cwd
@@ -23,24 +23,23 @@ sys.path.append(cwd)
 # ----------------------------------------------------------------------------------
 # ClearML Setup
 # ----------------------------------------------------------------------------------
-# Task.add_requirements(f"-r {os.path.join(cwd,'docker/requirements.txt')}")
-Task.force_requirements_env_freeze(False, "/workspace/requirements.txt")
+Task.add_requirements("/workspace/requirements.txt")
 task = Task.init(
-    project_name="Image-Classifier/Template",
-    task_name="Template-Classifier",
+    project_name="Debug/Template-Image-Classifier",
+    task_name="Image-Classifier-ClearML",
     task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False,
-    tags=["template"],
+    tags=["template-v2.0", "debug"],
 )
 Task.current_task().set_script(
     repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
-    branch="main",
+    # branch="main",
     working_dir=".",
     entry_point="src/train.py",
 )
 Task.current_task().set_base_docker(
     docker_image="pytorch/pytorch:latest",
-    docker_arguments=["--shm-size=8g","-e PYTHONPATH=/workspace"],
+    docker_arguments=["--shm-size=8g", "-e PYTHONPATH=/workspace"],
     docker_setup_bash_script=[
         "apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx"
         " libsm6 libxext6 libxrender-dev"
@@ -102,11 +101,11 @@ print("torch.cuda.is_available():", torch.cuda.is_available())
 conf = override_config(new_params, conf)
 print(asdict(conf))
 
-path_yaml_config = "/workspace/config/datasets.yaml"
+path_yaml_config = "/workspace/config/datasetsv2.yaml"
 path_yaml_config = Task.current_task().connect_configuration(
     path_yaml_config, "datasets.yaml"
 )
-task.set_tags(["Template_v1.3.5"])
+task.set_tags(["Template_v1.3.6"])
 # Task.current_task().execute_remotely()
 
 
@@ -201,10 +200,27 @@ trainer.tune(model=model_classifier, datamodule=data_module)
 print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
 trainer.fit(model=model_classifier, datamodule=data_module)
 print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
+# X persen dari autotune batch_size
 
 data_module.setup(stage="test")
 trainer.test(datamodule=data_module)
 print(f">> TEST TUNE BATCH_SIZE USE: {data_module.batch_size}")
+
+
+ls_upload_model = [
+    {
+        "name_upload": "best-ckpt",
+        "framework": "Pytorch Lightning",
+        "path_weights": checkpoint_callback.best_model_path,
+    },
+    {
+        "name_upload": "lastest-ckpt",
+        "framework": "Pytorch Lightning",
+        "path_weights": checkpoint_callback.last_model_path,
+    },
+]
+for d_item in ls_upload_model:
+    export_upload_model(conf=conf, **d_item)
 
 # Export Model
 print(
@@ -223,10 +239,10 @@ path_torchscript = os.path.join(
     path_export_model, f"torchscript-{conf.net.architecture}.pt"
 )
 
-print('Exporting model to TorchScript...')
+print("Exporting model to TorchScript...")
 torch.jit.save(model_classifier.to_torchscript(), path_torchscript)
 
-print('Exporting model to ONNX...')
+print("Exporting model to ONNX...")
 model_classifier.to_onnx(path_onnx, input_sample)
 
 print(
@@ -289,16 +305,6 @@ ls_upload_model = [
         "name_upload": "torchscript",
         "framework": "Pytorch",
         "path_weights": path_torchscript,
-    },
-    {
-        "name_upload": "best-ckpt",
-        "framework": "Pytorch Lightning",
-        "path_weights": checkpoint_callback.best_model_path,
-    },
-    {
-        "name_upload": "lastest-ckpt",
-        "framework": "Pytorch Lightning",
-        "path_weights": checkpoint_callback.last_model_path,
     },
 ]
 

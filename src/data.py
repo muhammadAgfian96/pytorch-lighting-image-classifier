@@ -104,6 +104,7 @@ class ImageDataModule(pl.LightningDataModule):
                 self.data_train_mapped, self.ls_train_dataset, self.ls_val_dataset, self.ls_test_dataset, self.d_metadata = result
                 self.classes_name = self.d_metadata.get('class_names')
                 self.__log_distribution_data_clearml(self.d_metadata)
+                self.prepare_data_has_downloaded = True
 
             except Exception as e:
                 print(traceback.format_exc())
