@@ -1,0 +1,6 @@
+dataset-train:
+- app-data-workflow/dataset-playground/Vegetables/train
+
+dataset-test:
+- app-data-workflow/dataset-playground/Vegetables/test # asd
+# - app-data-workflow/dataset-feedback/Bousteud/2023-02-26/63fc1f203e5add078f7898c4/Empty
