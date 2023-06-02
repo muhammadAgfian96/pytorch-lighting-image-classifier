@@ -1,7 +1,7 @@
 
 from clearml import StorageManager
 from collections import defaultdict
-from src.helper.data_helper import MinioDatasetDownloader
+from src.data_controller.utils import MinioDatasetDownloader
 from urllib.parse import urljoin
 from rich import print
 

@@ -1,5 +1,4 @@
 import os
-import shutil
 from concurrent.futures import ThreadPoolExecutor
 import time
 from minio import Minio
