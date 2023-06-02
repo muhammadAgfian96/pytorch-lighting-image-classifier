@@ -1,22 +1,21 @@
-import os
 import random
-import shutil
-import time
-
 import albumentations as al
 import numpy as np
 import plotly.graph_objects as go
 import pytorch_lightning as pl
 import torch
-from clearml import Dataset as DatasetClearML
-from clearml import StorageManager, Task
+from clearml import Task
 from PIL import Image
 from rich import print
 from torch.utils.data import DataLoader, Dataset
 
 from config.default import TrainingConfig
-from src.helper.data_helper import MinioDatasetDownloader
-from src.utils import get_list_data, map_data_to_dict, map_urls_to_class_and_local_path, read_yaml
+
+from src.data_controller.downloader.manager import DownloaderManager
+from src.data_controller.manipulator.splitter_dataset import splitter_dataset
+from src.augment import ClassificationPresetTrain, ClassificationPresetEval
+import traceback
+
 
 
 class ImageDatasetBinsho(Dataset):
@@ -35,6 +34,29 @@ class ImageDatasetBinsho(Dataset):
         x_image = self.transform(image=x_image)["image"]
         return x_image, y_label
 
+class ImageDatasetBinshoV2(Dataset):
+    def __init__(self, data, classes, augment_policy="autoaugment", viz_mode=False):
+        """
+        augment_policy = "autoaugment" or "ra" or "augmix" or "ta_wide"
+        """
+        self.data = data
+        self.classes = classes
+        self.transform = ClassificationPresetTrain(
+            auto_augment_policy=augment_policy,
+            viz_mode=viz_mode,
+        )
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        fp_img, y = self.data[index]
+        y_label = torch.tensor(int(y))
+        x_image = Image.open(fp_img)  # RGB format!
+        x_image = self.transform(img=x_image)
+        return x_image, y_label
+
+
 class ImageDataModule(pl.LightningDataModule):
     def __init__(self, conf: TrainingConfig, path_yaml_data=None):
         super().__init__()
@@ -51,32 +73,41 @@ class ImageDataModule(pl.LightningDataModule):
         # set clearml and download the data
 
         if not self.prepare_data_has_downloaded:
-            self.__cleaning_old_data()
-            
+            # self.__cleaning_old_data()
+
             try:
-                # there 4 type of dataset:
-                ## 1. single link s3
-                ## 2. dict data (coming from pipeline)
-                ## 3. yaml file
-                ## 4. id dataset clearml
-                if "s3://10.8.0.66:9000" in self.conf.data.dataset:
-                    self.__download_single_link_s3()
-
-                elif isinstance(self.conf.data.dataset, dict):
-                    self.__download_dict_data(self.conf.data.dataset, prefix_log='dict')
-                    self.data_dir = self.conf.data.dir = "/workspace/current_dataset"
-
-                elif self.conf.data.dataset == "datasets.yaml":
-                    print('Downloading dataset from yaml file...')
-                    self.__download_dataset_from_yaml()
-
-                else:
-                    self.__download_from_id_dataset_clearml()
-
-                self.__handle_downloaded_data()
+                """
+                    purpose:
+                    1. download data as dir tree
+                    2. self.data_dir = self.conf.data.dir
+                    self.ls_train_set = [(fp_img, y), ..., ...]
+                    self.ls_val_set  = [(fp_img, y), ..., ...]
+                    self.ls_test_set  = [(fp_img, y), ..., ...]
+                    there 4 type of dataset input will fetch:
+                    1. single link s3
+                    2. dict data (coming from pipeline) [NOT YET DONE]
+                    3. yaml file
+                    4. id dataset clearml
+                """
+                
+                # Download
+                output_dir_train, output_dir_test = DownloaderManager().fetch(
+                    input_dataset=self.path_yaml_dataset,
+                    output_dir=self.conf.data.dir
+                )
+                
+                result =  splitter_dataset(
+                    config=self.conf,
+                    path_dir_train=output_dir_train,
+                    path_dir_test=output_dir_test
+                )
+                self.data_train_mapped, self.ls_train_dataset, self.ls_val_dataset, self.ls_test_dataset, self.d_metadata = result
+                self.classes_name = self.d_metadata.get('class_names')
+                self.__log_distribution_data_clearml(self.d_metadata)
 
             except Exception as e:
-                print('🚨 Error:', e)
+                print(traceback.format_exc())
+                print("🚨 Error:", e)
                 print("⛔ Exit Programs")
                 exit()
         else:
@@ -87,19 +118,19 @@ class ImageDataModule(pl.LightningDataModule):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit":
             self.data_train = ImageDatasetBinsho(
-                self.ls_train_set,
+                self.ls_train_dataset,
                 transform=self.conf.aug.get_ls_train(),
                 classes=self.classes_name,
             )
             self.data_val = ImageDatasetBinsho(
-                self.ls_val_set,
+                self.ls_val_dataset,
                 transform=self.conf.aug.get_ls_val(),
                 classes=self.classes_name,
             )
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.data_test = ImageDatasetBinsho(
-                self.ls_test_set,
+                self.ls_test_dataset,
                 transform=self.conf.aug.get_ls_val(),
                 classes=self.classes_name,
             )
@@ -113,133 +144,20 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        return DataLoader(self.data_val, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(
+            self.data_val, 
+            batch_size=int(self.batch_size), 
+            num_workers=4
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.data_test, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(
+            self.data_test, 
+            batch_size=int(self.batch_size), 
+            num_workers=4
+        )
 
     # --------------------------- PRIVATE ---------------------------
-    def __cleaning_old_data(self):
-        print("🧹 Cleaning old data...")
-        if os.path.exists(self.conf.data.dir):
-            shutil.rmtree(self.conf.data.dir)
-        if os.path.exists("/workspace/current_dataset_test"):
-            shutil.rmtree("/workspace/current_dataset_test")
-        os.makedirs(self.conf.data.dir, exist_ok=True)
-        print("creted folder, downloading dataset...")
-
-    def __handle_downloaded_data(self):
-        print("✅ downloaded data:", self.conf.data.dir)
-        print("📂 list of data:", os.listdir(self.conf.data.dir))
-        print("📑 splitting to train, val, test...")
-        self.prepare_data_has_downloaded = True
-        (
-            self.ddata_by_label,
-            self.ls_train_set,
-            self.ls_val_set,
-            self.ls_test_set,
-            self.d_metadata,
-            self.classes_name,
-        ) = get_list_data(config=self.conf)
-
-        if self.ls_test_map_dedicated is None:
-            print("😓 No test map dedicated, using test set from training split")
-            self.ls_test_map_dedicated = map_urls_to_class_and_local_path(
-                    the_set=self.ls_test_set,
-                    ls_urls=self.ls_all_urls
-                )
-
-
-        print("metadata:", self.d_metadata)
-        print("classname:", self.classes_name)
-        self.__log_distribution_data_clearml(self.d_metadata)
-    
-    # --------------------------- Download Data ---------------------------
-    # there 4 type of dataset
-    # 1. single link s3
-    # 2. dict data
-    # 3. yaml file
-    # 4. id dataset clearml
-
-    def __download_from_id_dataset_clearml(self):
-        print("📥 dowloading dataset_id", self.conf.data.dataset)
-        DatasetClearML.get(dataset_id=self.conf.data.dataset
-                    ).get_mutable_local_copy(
-                        target_folder="/workspace/current_dataset",
-                        overwrite=True
-                    )
-    
-    def __download_single_link_s3(self):
-        print("📥 Download single link s3", self.conf.data.dataset)
-        downloaded_ds_s3 = StorageManager.download_folder(
-                        remote_url=self.conf.data.dataset,
-                        local_folder=self.conf.data.dir,
-                        overwrite=False,
-                    )
-        path_s3_minio = self.conf.data.dataset.split(
-                        "s3://10.8.0.66:9000/"
-                    )[-1]
-        fp_local_download = os.path.join(self.conf.data.dir, path_s3_minio)
-        for folder_name in os.listdir(fp_local_download):
-            folder_path_source = os.path.join(
-                            fp_local_download, folder_name
-                        )
-            if os.path.exists(folder_path_source):
-                shutil.move(
-                                folder_path_source,
-                                os.path.join(self.conf.data.dir, folder_name),
-                            )
-        shutil.rmtree(
-                        os.path.join(self.conf.data.dir, path_s3_minio.split("/")[0])
-                    )
-
-        print("↗️ path_downloaded:", self.conf.data.dir, downloaded_ds_s3)
-        self.data_dir = self.conf.data.dir
-
-    def __download_dict_data(self, 
-                             dict_data, 
-                             download_dir="/workspace/current_dataset",
-                             prefix_log=""):
-        print(f"📥 Download {prefix_log} data")
-        s3_api = MinioDatasetDownloader(
-                        dataset=dict_data,
-                        download_dir=download_dir,
-                    )
-        start_time = time.time()
-        s3_api.download_dataset()
-        end_time = time.time()
-        duration = end_time - start_time
-        print(f"⏳ [{prefix_log.upper()}] download duration :", round(duration, 3), "seconds")
-        
-    def __download_dataset_from_yaml(self):
-        print("Extracting dataset from yaml file")
-        d_train, d_test = self.__extract_list_link_dataset_yaml()
-        print("Verify train and test dataset")
-        self.__verify_class_train_and_test(d_train, d_test)
-
-        # download train
-        print("Downloading train dataset")
-        self.__download_dict_data(dict_data=d_train, prefix_log="TRAIN")
-        self.data_dir = self.conf.data.dir = "/workspace/current_dataset"
-
-        if len(d_test) != 0:
-            # download test
-            self.__download_dict_data(
-                dict_data=d_test,
-                download_dir=self.test_local_path,
-                prefix_log="TEST"
-            )
-            print('mapping test dataset to dict')
-            self.ls_test_map_dedicated = map_data_to_dict(
-                d_data=d_test, 
-                local_path_dir=self.test_local_path
-            )
-        else:
-            print("⚠️ test dataset is empty!")
-            self.ls_all_urls = []
-            for class_name, ls_url in d_train.items():
-                self.ls_all_urls += ls_url
-        print('[Done] Downloading dataset from yaml file')
 
     def __verify_class_train_and_test(self, d_train, d_test):
         class_name_train = d_train.keys()
@@ -250,8 +168,9 @@ class ImageDataModule(pl.LightningDataModule):
             if cls_name not in class_name_train:
                 print(f"[ERROR] {cls_name} not in class_name_train:")
                 print(class_name_train)
-                print("Please make sure, the class of dataset-test contain"
-                      " in dataset-train!"
+                print(
+                    "Please make sure, the class of dataset-test contain"
+                    " in dataset-train!"
                 )
                 Task.current_task().mark_failed()
                 exit()
@@ -263,9 +182,9 @@ class ImageDataModule(pl.LightningDataModule):
         """
         labels_pie = ["train", "val", "test"]
         values_pie = [
-            d_metadata["train_count"],
-            d_metadata["val_count"],
-            d_metadata["test_count"],
+            d_metadata["count_section"]["train"],
+            d_metadata["count_section"]["val"],
+            d_metadata["count_section"]["test"],
         ]
         fig_dist_train_val_test = go.Figure(
             data=[go.Pie(labels=labels_pie, values=values_pie)]
@@ -279,10 +198,10 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
         # Sample data
-        x_values = [value for value in d_metadata["counts"]["train"].keys()]
-        y_train = [value for value in d_metadata["counts"]["train"].values()]
-        y_val = [value for value in d_metadata["counts"]["val"].values()]
-        y_test = [value for value in d_metadata["counts"]["test"].values()]
+        x_values = [value for value in d_metadata["count"]["train"].keys()]
+        y_train = [value for value in d_metadata["count"]["train"].values()]
+        y_val = [value for value in d_metadata["count"]["val"].values()]
+        y_test = [value for value in d_metadata["count"]["test"].values()]
 
         # Create three bar chart traces, one for each section
         trace1 = go.Bar(
@@ -328,84 +247,11 @@ class ImageDataModule(pl.LightningDataModule):
             iteration=1,
         )
 
-    # --------------------- Mapping DATA ---------------------
-    def __extract_list_link_dataset_yaml(self):
-        """
-        Extract list link dataset from yaml file.
-        return:
-            - d_train: dict
-                {"class_name": 
-                    [
-                        url_file_1,
-                        ...,
-                        url_file_n,
-                    ],
-                 ...
-                }
-            - d_test: dict
-        """
-        print("path_yaml_config:", self.path_yaml_dataset)
-        datasets_yaml = read_yaml(self.path_yaml_dataset)
-        print(datasets_yaml)
-
-        ls_url_files_test = []
-        # get/download list-data
-        ls_url_files_train = self.__get_list_url_from_minio_s3(
-            datasets_yaml, section="train"
-        )
-        ls_url_files_test = self.__get_list_url_from_minio_s3(
-            datasets_yaml, section="test"
-        )
-
-        # datasets_yaml.get('dataset-test', False)
-
-        d_train = self.__mapping_to_dict_class(ls_url_files_train)
-        d_test = self.__mapping_to_dict_class(ls_url_files_test)
-
-        return d_train, d_test
-
-    def __mapping_to_dict_class(self, ls_url_files_train):
-        d_map = {}
-        print("mapping to dict_class..")
-        for d_file in ls_url_files_train:
-            url_file = d_file["name"]
-            class_name = url_file.split("/")[-2].capitalize() # need_check_capital_class_name
-            if class_name not in d_map.keys():
-                d_map[class_name] = []
-            d_map[class_name].append(url_file)
-        return d_map
-
-    def __get_list_url_from_minio_s3(self, datasets_yaml, section="train"):
-        ls_urls_files = []
-        print(f"Get list dataset-{section}...")
-        for path_dataset in datasets_yaml[f"dataset-{section}"]:
-            if path_dataset is None:
-                print("None path_dataset")
-                continue
-            if "s3://10.8.0.66:9000" not in path_dataset:
-                remote_url = os.path.join("s3://10.8.0.66:9000", path_dataset)
-            else:
-                remote_url = path_dataset
-            print("<remote_url>", remote_url)
-
-            ls_files = StorageManager.list(
-                remote_url=remote_url, return_full_path=True, with_metadata=True
-            )
-            print("\tTotal Data:", len(ls_files))
-            if len(ls_files) == 0:
-                print("CHECK THIS DATA", remote_url)
-                continue
-            ls_urls_files.extend(ls_files)
-            ls_files = None
-            print("-----")
-        return ls_urls_files
-
-
     # --------------------- Vizualisation Augmentation ---------------------
     def visualize_augmented_images(self, section: str, num_images=5):
         print(f"vizualizing sample {section}...")
         ls_viz_data = []
-        for label, ls_fp_image in self.ddata_by_label.items():
+        for label, ls_fp_image in self.data_train_mapped.items():
             ls_viz_data.extend(ls_fp_image[0:num_images])
 
         random.shuffle(ls_viz_data)
@@ -428,6 +274,38 @@ class ImageDataModule(pl.LightningDataModule):
             label_name = self.classes_name[label]
             Task.current_task().get_logger().report_image(
                 f"{section}",
+                f"{label_name}_{i}",
+                iteration=1,
+                image=image_array,
+            )
+
+    def visualize_augmented_images_v2(self, section: str, num_images=5, augment_policy="autoaugment", prefix_sec=""):
+        print(f"vizualizing v2 sample {section}...")
+        ls_viz_data = []
+        for label, ls_fp_image in self.data_train_mapped.items():
+            ls_viz_data.extend(ls_fp_image[0:num_images])
+
+        random.shuffle(ls_viz_data)
+        if "train" in section:
+            dataset_viz = ImageDatasetBinshoV2(
+                ls_viz_data,
+                classes=self.classes_name,
+                augment_policy=augment_policy,
+                viz_mode=True,
+            )
+
+        if "val" in section or "test" in section:
+            dataset_viz = ImageDatasetBinsho(
+                ls_viz_data,
+                transform=self.conf.aug.get_ls_val()[:-2],
+                classes=self.classes_name,
+            )
+
+        for i in range(len(ls_viz_data)):
+            image_array, label = dataset_viz[i]
+            label_name = self.classes_name[label]
+            Task.current_task().get_logger().report_image(
+                f"{augment_policy}-{section}",
                 f"{label_name}_{i}",
                 iteration=1,
                 image=image_array,
