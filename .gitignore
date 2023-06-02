@@ -11,3 +11,6 @@ logger_predict
 exports
 .ruff*
 *.png
+current_dataset*
+.ruff*
+*.pytest_cache*
