@@ -18,19 +18,24 @@ def __split_dataset_based_class(images_and_cls_idx, train_ratio, val_ratio):
     val_count = int(val_ratio * num_images)
 
     train = images_and_cls_idx[:train_count]
-    val = images_and_cls_idx[train_count : train_count + val_count]
+    val = images_and_cls_idx[train_count : train_count + val_count] #becare ful
     test = images_and_cls_idx[train_count + val_count :]
     return train, val, test
 
-def __splitting_and_get_metadata(data_mapped:dict, train_ratio:float, val_ratio:float, metadata:dict):
+def __splitting_and_get_metadata(data_mapped:dict, train_ratio:float, val_ratio:float, metadata:dict, is_test_dataset_exist:bool):
     ls_train_dataset, ls_val_dataset, ls_test_dataset = [], [], []
 
     for label_class, ls_images_file_cls_index in data_mapped.items():
         train, val, test = __split_dataset_based_class(ls_images_file_cls_index, train_ratio, val_ratio)
+
+        if is_test_dataset_exist:
+            val.extend(test)
+            test = []
+            
         ls_train_dataset.extend(train)
         ls_val_dataset.extend(val)
         ls_test_dataset.extend(test) # if is_test_dataset_exist `test` will be []
-
+            
         metadata["count"]["train"][label_class] = len(train)
         metadata["count"]["val"][label_class] = len(val)
         metadata["count"]["test"][label_class] = len(test)
@@ -89,8 +94,6 @@ def splitter_dataset(config: TrainingConfig, path_dir_train, path_dir_test):
             )
     print("✅✅ All class in test dataset is in train dataset. ✅✅")
 
-    ls_train_dataset, ls_val_dataset, ls_test_dataset = [], [], []
-
     metadata = {
         "class_names": class_names_train,
         "ratio": [train_ratio, val_ratio, test_ratio],
@@ -115,7 +118,8 @@ def splitter_dataset(config: TrainingConfig, path_dir_train, path_dir_test):
         data_mapped=data_train_mapped,
         train_ratio=train_ratio,
         val_ratio=val_ratio,
-        metadata=metadata # ❗ be careful here metadata just updated
+        metadata=metadata, # ❗ be careful here metadata just updated
+        is_test_dataset_exist=is_test_dataset_exist
     ) 
 
 

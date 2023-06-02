@@ -105,8 +105,8 @@ path_yaml_config = "/workspace/config/datasetsv2.yaml"
 path_yaml_config = Task.current_task().connect_configuration(
     path_yaml_config, "datasets.yaml"
 )
-task.set_tags(["Template_v1.3.6"])
-# Task.current_task().execute_remotely()
+# task.set_tags(["Template_v1.3.6"])
+Task.current_task().execute_remotely()
 
 
 task.rename(new_params["default"]["TASK_NAME"])
