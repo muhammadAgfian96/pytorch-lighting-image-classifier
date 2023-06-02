@@ -33,7 +33,7 @@ task = Task.init(
 )
 Task.current_task().set_script(
     repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
-    # branch="main",
+    branch="feat/clearml-dataset",
     working_dir=".",
     entry_point="src/train.py",
 )
