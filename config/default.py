@@ -52,6 +52,7 @@ class Augmentations:
         self.std = std
 
     def get_ls_train(self):
+        _p_low = 0.25
         _p_default = 0.5
         _p_medium = 0.75
         _p_highest = 0.95
@@ -74,28 +75,37 @@ class Augmentations:
                 value= [0, 0, 0]
             ),
             al.CoarseDropout(
-                always_apply=False, p=_p_default,
+                always_apply=False, p=_p_low,
                 min_holes=16, max_holes=25, 
                 min_height=0.02, max_height=0.12, 
                 min_width=0.02, max_width=0.12,
             ),
             al.RandomBrightnessContrast(
-                p=_p_default, 
-                brightness_limit=[-0.2, 0.45],
-                contrast_limit=[-0.25, 0.35],
+                p=_p_medium, 
+                brightness_limit=[-0.25, 0.25],
+                contrast_limit=[-0.25, 0.25],
                 brightness_by_max=False
             ), 
+            al.OneOf(p=_p_low, transforms=[
+                    al.MotionBlur(p=1.0),
+                    al.ImageCompression(p=1.0),
+                    al.OpticalDistortion(p=1.0),
+                    al.MultiplicativeNoise(p=1.0)
+                ]
+            ),
             al.OneOf(p=_p_default, transforms=[
-                al.MotionBlur(),
-                al.ImageCompression(),
-                al.OpticalDistortion(),
-                al.MultiplicativeNoise()]
+                    al.GaussNoise(p=1.0, var_limit=(101.97, 322.37), ),
+                    al.ISONoise(p=1.0),
+                    al.RandomGamma(p=1.0, gamma_limit=(57, 142), ),
+                    # al.RandomFog(always_apply=False, p=1.0, fog_coef_lower=0.23, fog_coef_upper=0.27, alpha_coef=0.92),
+                    al.RandomRain(always_apply=False, p=1.0, slant_lower=-10, slant_upper=12, drop_length=10, drop_width=1, drop_color=(248, 246, 247), blur_value=2, brightness_coefficient=0.84, rain_type=None),
+                ]
             ),
-            al.ZoomBlur(
-                always_apply=False, 
-                p=_p_medium, max_factor=(1.0, 1.31), 
-                step_factor=(0.01, 0.03)
-            ),
+            # al.ZoomBlur(
+            #     always_apply=False, 
+            #     p=_p_medium, max_factor=(1.0, 1.31), 
+            #     step_factor=(0.01, 0.03)
+            # ),
             al.Resize(height=Data.input_size, width=Data.input_size, always_apply=True),
             al.Normalize(mean=self.mean, std=self.std, always_apply=True, max_pixel_value=255.0),
             ToTensorV2(always_apply=True),
