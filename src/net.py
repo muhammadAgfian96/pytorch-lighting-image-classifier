@@ -77,72 +77,76 @@ def get_lr_scheduler_config(
 
     return lr_scheduler_config, scheduler
 
-
+from src.schema.config import DataConfig, TrainConfig, ModelConfig
 class Classifier(pl.LightningModule):
-    def __init__(self, conf: TrainingConfig):
+    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_data:DataConfig, d_model:ModelConfig):
         super().__init__()
         self.conf = conf
+        self.d_train:TrainConfig = d_train
+        self.d_data:DataConfig = d_data
+        self.d_model:ModelConfig = d_model
 
-        if self.conf.net.architecture not in ls_models_library and len(
-            self.conf.net.architecture
-        ) == len("4d609a6b07ed447bae47af9a6fbfb999"):
-            model_old = InputModel(model_id=self.conf.net.architecture)
-            self.conf.net.architecture = model_old.config_dict["net"]
-            print("dowloding model", self.conf.net.architecture)
+        if self.d_model.architecture not in ls_models_library \
+            and len(self.d_model.architecture) == len("4d609a6b07ed447bae47af9a6fbfb999"):
+            
+            model_old = InputModel(model_id=self.d_model.architecture)
+            self.d_model.architecture = model_old.config_dict["net"]
+            print("dowloding model", self.d_model.architecture)
             print("old model labels", model_old.labels)
             model_old_path = model_old.get_weights()
-            self.conf.net.checkpoint_model = model_old_path
+            self.d_model.path_pretrained = model_old_path
 
         self.model = timm.create_model(
-            self.conf.net.architecture,
-            pretrained=self.conf.net.checkpoint_model,
-            num_classes=self.conf.net.num_class,
-            drop_rate=self.conf.net.dropout,
+            self.d_model.architecture,
+            pretrained=self.d_model.path_pretrained,
+            num_classes=self.d_data.num_classes,
+            drop_rate=self.d_model.dropout,
             # checkpoint_path=(self.conf.net.checkpoint_model),
         )
-        if self.conf.net.checkpoint_model is not None:
+
+        if self.d_model.path_pretrained is not None:
             # torchscript way
             # loaded_script_model = torch.jit.load(self.conf.net.checkpoint_model)
             # self.model.load_state_dict(loaded_script_model.state_dict())
 
             # raw way
-            checkpoint = torch.load(self.conf.net.checkpoint_model)
+            checkpoint = torch.load(self.d_model.path_pretrained)
             self.model.load_state_dict(checkpoint["state_dict"], strict=False)
             Task.current_task().add_tags("resume")
 
-        Task.current_task().add_tags(conf.net.architecture)
-        self.classes_name = self.conf.data.category
+        Task.current_task().add_tags(self.d_model.architecture)
+        self.classes_name = self.d_data.classes
 
         self.train_loss = torch.nn.CrossEntropyLoss()
         self.val_loss = torch.nn.CrossEntropyLoss()
         self.test_loss = torch.nn.CrossEntropyLoss()
 
-        num_class = self.conf.net.num_class
+        num_class = self.d_data.num_classes
         # self.task_accuracy = 'multiclass' if num_class > 2 else 'binary'
         self.task_accuracy = "multiclass"
-        self.train_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
-        self.val_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
-        self.test_acc = Accuracy(task=self.task_accuracy, num_classes=num_class)
-        self.roc = ROC(task=self.task_accuracy, num_classes=num_class)
-        self.auroc = AUROC(task=self.task_accuracy, num_classes=num_class)
-        self.cm = ConfusionMatrix(task=self.task_accuracy, num_classes=num_class)
+        self.train_acc = Accuracy(task=self.task_accuracy, num_classes=self.d_data.num_classes)
+        self.val_acc = Accuracy(task=self.task_accuracy, num_classes=self.d_data.num_classes)
+        self.test_acc = Accuracy(task=self.task_accuracy, num_classes=self.d_data.num_classes)
+        self.roc = ROC(task=self.task_accuracy, num_classes=self.d_data.num_classes)
+        self.auroc = AUROC(task=self.task_accuracy, num_classes=self.d_data.num_classes)
+        self.cm = ConfusionMatrix(task=self.task_accuracy, num_classes=self.d_data.num_classes)
 
-        self.learning_rate = self.conf.hyp.base_learning_rate
+        self.learning_rate = self.d_train.lr
         d_hyp = asdict(self.conf.hyp)
         self.save_hyperparameters(
             {
-                "net": {
-                    "architecture": self.conf.net.architecture,
-                    "dropout": self.conf.net.dropout,
-                    "num_class": len(self.classes_name),
-                    "labels": self.classes_name,
+                "model": {
+                    "architecture": self.d_model.architecture,
+                    "dropout": self.d_model.dropout,
+                    "num_class": len(self.d_data.classes),
+                    "labels": self.d_data.classes,
                 },
                 "preprocessing": {
-                    "input_size": self.conf.data.input_size,
-                    "mean": self.conf.data.mean,
-                    "std": self.conf.data.std,
+                    "input_size": self.d_model.input_size,
+                    "mean": self.d_data.mean,
+                    "std": self.d_data.std,
                 },
-                "hyperparameters": d_hyp,
+                "hyperparameters": self.d_train.dict(),
             }
         )
 
@@ -163,15 +167,15 @@ class Classifier(pl.LightningModule):
         }
 
         optimizer = opt_d.get(
-            self.conf.hyp.opt_name,
-            optim.Adam(self.model.parameters(), lr=self.conf.hyp.base_learning_rate),
+            self.d_train.optimizer,
+            optim.Adam(self.model.parameters(), lr=self.d_train.lr),
         )
 
         lr_scheduler_config, scheduler = get_lr_scheduler_config(
             optimizer,
-            LR_SCHEDULER=self.conf.hyp.lr_scheduler,
-            LR_DECAY_RATE=self.conf.hyp.lr_decay_rate,
-            LR_STEP_SIZE=self.conf.hyp.lr_step_size,
+            LR_SCHEDULER=self.d_train.lr_scheduler,
+            LR_DECAY_RATE=self.d_train.lr_decay_rate,
+            LR_STEP_SIZE=self.d_train.lr_step_size
         )
         return [optimizer], [lr_scheduler_config]
 
