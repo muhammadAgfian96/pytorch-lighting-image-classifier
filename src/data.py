@@ -56,15 +56,20 @@ class ImageDatasetBinshoV2(Dataset):
         x_image = self.transform(img=x_image)
         return x_image, y_label
 
+from src.schema.config import DataConfig, TrainConfig
 
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, conf: TrainingConfig, path_yaml_data=None):
+    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_dataset:DataConfig, path_yaml_data=None):
         super().__init__()
-        self.data_dir = conf.data.dir
-        self.conf = conf
         self.prepare_data_has_downloaded = False
-        self.batch_size = self.conf.data.batch
-        self.path_yaml_dataset = path_yaml_data
+        self.d_dataset:DataConfig = d_dataset
+        self.d_train:TrainConfig = d_train
+
+        self.data_dir = d_dataset.dir_output
+        self.conf = conf
+        
+        self.batch_size = d_train.batch
+        self.path_yaml_dataset = d_dataset.path_yaml
         self.test_local_path = "/workspace/current_dataset_test"
         self.ls_test_map_dedicated = None
 
@@ -92,16 +97,24 @@ class ImageDataModule(pl.LightningDataModule):
                 
                 # Download
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
-                    input_dataset=self.path_yaml_dataset,
-                    output_dir=self.conf.data.dir
+                    input_dataset=self.d_dataset.yaml_path,
+                    output_dir=self.d_dataset.dir_output
                 )
                 
                 result =  splitter_dataset(
-                    config=self.conf,
+                    d_dataset=self.d_dataset,
                     path_dir_train=output_dir_train,
                     path_dir_test=output_dir_test
                 )
-                self.data_train_mapped, self.ls_train_dataset, self.ls_val_dataset, self.ls_test_dataset, self.d_metadata = result
+
+                (
+                    self.data_train_mapped, 
+                    self.ls_train_dataset, 
+                    self.ls_val_dataset, 
+                    self.ls_test_dataset, 
+                    self.d_metadata
+                ) = result
+                
                 self.classes_name = self.d_metadata.get('class_names')
                 self.__log_distribution_data_clearml(self.d_metadata)
                 self.prepare_data_has_downloaded = True
@@ -121,19 +134,19 @@ class ImageDataModule(pl.LightningDataModule):
             self.data_train = ImageDatasetBinsho(
                 self.ls_train_dataset,
                 transform=self.conf.aug.get_ls_train(),
-                classes=self.classes_name,
+                classes=self.d_dataset.classes,
             )
             self.data_val = ImageDatasetBinsho(
                 self.ls_val_dataset,
                 transform=self.conf.aug.get_ls_val(),
-                classes=self.classes_name,
+                classes=self.d_dataset.classes,
             )
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.data_test = ImageDatasetBinsho(
                 self.ls_test_dataset,
                 transform=self.conf.aug.get_ls_val(),
-                classes=self.classes_name,
+                classes=self.d_dataset.classes,
             )
 
     def train_dataloader(self):
@@ -311,3 +324,4 @@ class ImageDataModule(pl.LightningDataModule):
                 iteration=1,
                 image=image_array,
             )
+
