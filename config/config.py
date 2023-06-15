@@ -21,7 +21,7 @@ args_train = {
 
 args_model = {
     "input_size": 224,
-    "architecture": "",
+    "architecture": "tf_efficientnet_b0_ns",
     "dropout": 0.0
 }
 

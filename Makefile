@@ -11,7 +11,7 @@ dev:
 	-e PYTHONPATH=/workspace \
 	-v ${PWD}:/workspace \
 	--shm-size=8g \
-	-v /home/agfian/clearml.conf:/root/clearml.conf \
+	-v /home/binshoadmin/clearml.conf:/root/clearml.conf \
 	--name $(CONTAINER) \
 	$(IMAGE) bash
 

@@ -69,7 +69,7 @@ class ImageDataModule(pl.LightningDataModule):
         self.conf = conf
         
         self.batch_size = d_train.batch
-        self.path_yaml_dataset = d_dataset.path_yaml
+        self.path_yaml_dataset = d_dataset.yaml_path
         self.test_local_path = "/workspace/current_dataset_test"
         self.ls_test_map_dedicated = None
 

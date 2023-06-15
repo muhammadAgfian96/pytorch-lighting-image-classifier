@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
                                          ModelCheckpoint)
 from rich import print
 
-from config.default import TrainingConfig
+from config.default import TrainingConfig as OldTrainingConfig
 from src.data import ImageDataModule
 from src.net import Classifier
 from src.test import ModelPredictor
@@ -23,6 +23,7 @@ from src.schema.config import (
     ModelConfig, 
     TrainConfig
 )
+from src.utils import read_yaml
 
 cwd = os.getcwd()
 os.environ["PYTHONPATH"] = cwd
@@ -37,11 +38,11 @@ task = Task.init(
     task_name="Image-Classifier-ClearML",
     task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False,
-    tags=["template-v2.0", "debug"],
+    tags=["template-v3.0", "debug"],
 )
 Task.current_task().set_script(
     repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
-    branch="feat/clearml-dataset",
+    branch="new/v2",
     working_dir=".",
     entry_point="src/train.py",
 )
@@ -62,15 +63,14 @@ print(
 # ----------------------------------------------------------------------------------
 """
 )
-path_yaml_config = "/workspace/config/datasetsv2.yaml"
 
 task.connect(args_data, "1_Data")
 task.connect(args_model, "2_Model")
 task.connect(args_train, "3_Training")
 task.connect(args_custom, "4_Custom")
 
-path_data_yaml = ''
-path_data_yaml = task.connect_configuration(path_data_yaml)
+path_data_yaml = "/workspace/config/datasetsv2.yaml"
+path_data_yaml = task.connect_configuration(path_data_yaml, "Datasets")
 d_data_yaml = read_yaml(path_data_yaml) 
 
 d_data_config = DataConfig(**args_data)
@@ -78,7 +78,7 @@ d_train = TrainConfig(**args_train)
 d_model = ModelConfig(**args_model)
 d_custom = CustomConfig(**args_custom)
 
-task.execute_remotely()
+# task.execute_remotely()
 
 print(
 """
@@ -101,11 +101,12 @@ if d_train.lr == -1:
     auto_lr_find = True
     print("USING AUTO_LR_FIND")
 
+conf = OldTrainingConfig()
 data_module = ImageDataModule(
     conf=conf, 
     d_train=d_train, 
     d_dataset=d_data_config, 
-    path_yaml_data=path_yaml_config
+    path_yaml_data=path_data_yaml
 )
 data_module.prepare_data()
 d_data_config.num_classes = len(data_module.classes_name)
@@ -146,7 +147,12 @@ ls_callback = [
 
 
 accelerator = "gpu" if torch.cuda.is_available() else "cpu"
-model_classifier = Classifier(conf)
+model_classifier = Classifier(
+    conf=conf, 
+    d_train=d_train,
+    d_data=d_data_config,
+    d_model=d_model
+)
 
 
 print(
@@ -158,12 +164,12 @@ print(
 )
 trainer = pl.Trainer(
     max_steps=-1,
-    max_epochs=conf.hyp.epoch,
+    max_epochs=d_train.epoch,
     accelerator=accelerator,
     devices=1,
     logger=True,
     callbacks=ls_callback,
-    precision=conf.hyp.precision,
+    precision=d_train.precision,
     auto_scale_batch_size=auto_batch,
     auto_lr_find=auto_lr_find,
     log_every_n_steps=4,
@@ -220,7 +226,7 @@ print("Exporting model to ONNX...")
 model_classifier.to_onnx(path_onnx, input_sample)
 
 print(
-    """
+"""
 # ----------------------------------------------------------------------------------
 # Testing Model ONNX and TorchScript then upload to 51
 # ----------------------------------------------------------------------------------

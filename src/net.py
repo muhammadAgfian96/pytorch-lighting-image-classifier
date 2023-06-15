@@ -364,7 +364,7 @@ class Classifier(pl.LightningModule):
                 preds=preds,
                 target=labels,
                 threshold=thresh,
-                num_classes=self.conf.net.num_class,
+                num_classes=self.d_data.num_classes,
                 top_k=1,
             ).item()
             for thresh in threshold
