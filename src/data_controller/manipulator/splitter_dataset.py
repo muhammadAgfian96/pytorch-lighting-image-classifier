@@ -4,6 +4,7 @@ import os
 from src.utils import check_image_health
 import random
 from rich import print
+from src.schema.config import DataConfig
 
 random.seed(1) 
 
@@ -55,8 +56,7 @@ def __mapping_data_dict(path_dir_section:str, class_names_train:list):
     return data
 
 
-
-def splitter_dataset(config: TrainingConfig, path_dir_train, path_dir_test):
+def splitter_dataset(d_dataset:DataConfig, path_dir_train, path_dir_test):
     """
     Get the list of images and labels.
     return
@@ -71,9 +71,9 @@ def splitter_dataset(config: TrainingConfig, path_dir_train, path_dir_test):
     - class_names_train v
     """
     # vars from config
-    train_ratio = config.data.train_ratio
-    val_ratio = config.data.val_ratio
-    test_ratio = config.data.test_ratio
+    train_ratio = d_dataset.ratio_train
+    val_ratio = d_dataset.ratio_val
+    test_ratio = d_dataset.ratio_test
 
     ls_class_test = os.listdir(path_dir_test)
     ls_class_train = os.listdir(path_dir_train)
