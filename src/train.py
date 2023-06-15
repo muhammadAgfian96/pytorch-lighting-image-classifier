@@ -75,12 +75,17 @@ if inside_pipeline:
 conf = TrainingConfig()
 params = asdict(conf).copy()
 params["aug"].pop("augmentor_task")
-params_general = task.connect(params["default"], "Project")
-params_aug = task.connect(params["aug"], "Augmentations")
-params_db = task.connect(params["db"], "Database")
-params_data = task.connect(params["data"], "Data")
-params_hyp = task.connect(params["hyp"], "Trainings")
-params_net = task.connect(params["net"], "Models")
+# params_general = task.connect(params["default"], "Project")
+# params_aug = task.connect(params["aug"], "Augmentations")
+# params_db = task.connect(params["db"], "Database")
+
+filter_data ={
+    "exclude_tags": [],
+}
+params_data = task.connect(params["data"], "1_Data")
+params_net = task.connect(params["net"], "2_Models")
+params_hyp = task.connect(params["hyp"], "3_Trainings")
+params_hyp = task.connect(filter_data, "4_Filtering_Data")
 
 
 new_params = {
