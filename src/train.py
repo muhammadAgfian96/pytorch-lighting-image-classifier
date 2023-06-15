@@ -16,6 +16,14 @@ from src.test import ModelPredictor
 from src.utils import (export_upload_model, make_graph_performance,
                        override_config, receive_data_from_pipeline)
 
+from config.config import args_data, args_train, args_model, args_custom
+from src.schema.config import (
+    CustomConfig, 
+    DataConfig, 
+    ModelConfig, 
+    TrainConfig
+)
+
 cwd = os.getcwd()
 os.environ["PYTHONPATH"] = cwd
 sys.path.append(cwd)
@@ -54,98 +62,59 @@ print(
 # ----------------------------------------------------------------------------------
 """
 )
-# running if inside pipeline
-args_from_pipeline = {
-    "config_yaml": "",
-    "project_name": "",
-    "reports_url": "",
-    "datasets_url": "",
-    "using_pipeline": False,
-}
-task.connect(args_from_pipeline, "Config-Pipeline")
-
-inside_pipeline = args_from_pipeline["using_pipeline"]
-if inside_pipeline:
-    d_config_yaml, d_datasets_json, d_report = receive_data_from_pipeline(
-        task, args_from_pipeline
-    )
-
-
-# running for single task
-conf = TrainingConfig()
-params = asdict(conf).copy()
-params["aug"].pop("augmentor_task")
-# params_general = task.connect(params["default"], "Project")
-# params_aug = task.connect(params["aug"], "Augmentations")
-# params_db = task.connect(params["db"], "Database")
-
-filter_data ={
-    "exclude_tags": [],
-}
-params_data = task.connect(params["data"], "1_Data")
-params_net = task.connect(params["net"], "2_Models")
-params_hyp = task.connect(params["hyp"], "3_Trainings")
-params_hyp = task.connect(filter_data, "4_Filtering_Data")
-
-
-new_params = {
-    "default": params["default"],
-    "aug": params["aug"],
-    "db": params["db"],
-    "data": params["data"],
-    "hyp": params["hyp"],
-    "net": params["net"],
-}
-
-print("CURRENT WORKDIR:", os.getcwd(), " && ls .")
-print(os.listdir(os.getcwd()))
-print(new_params)
-print(params)
-
-print("torch.cuda.is_available():", torch.cuda.is_available())
-conf = override_config(new_params, conf)
-print(asdict(conf))
-
 path_yaml_config = "/workspace/config/datasetsv2.yaml"
-path_yaml_config = Task.current_task().connect_configuration(
-    path_yaml_config, "datasets.yaml"
-)
-# task.set_tags(["Template_v1.3.6"])
-Task.current_task().execute_remotely()
 
+task.connect(args_data, "1_Data")
+task.connect(args_model, "2_Model")
+task.connect(args_train, "3_Training")
+task.connect(args_custom, "4_Custom")
 
-task.rename(new_params["default"]["TASK_NAME"])
+path_data_yaml = ''
+path_data_yaml = task.connect_configuration(path_data_yaml)
+d_data_yaml = read_yaml(path_data_yaml) 
+
+d_data_config = DataConfig(**args_data)
+d_train = TrainConfig(**args_train)
+d_model = ModelConfig(**args_model)
+d_custom = CustomConfig(**args_custom)
+
+task.execute_remotely()
+
 print(
-    """
+"""
 # ----------------------------------------------------------------------------------
 # Prepare Data, Model, Callbacks For Training 
 # ----------------------------------------------------------------------------------
 """
 )
-pl.seed_everything(conf.data.random_seed)
+pl.seed_everything(32)
 
 print("# Data ---------------------------------------------------------------------")
 auto_batch = False
 auto_lr_find = False
-if conf.data.batch == -1:
+if d_train.batch == -1:
     auto_batch = True
-    conf.data.batch = 4
+    d_train.batch = 4
     print("USING AUTO_BATCH")
-if conf.hyp.base_learning_rate == -1:
-    conf.hyp.base_learning_rate = 0.001
+if d_train.lr == -1:
+    d_train.lr = 0.001
     auto_lr_find = True
     print("USING AUTO_LR_FIND")
 
-data_module = ImageDataModule(conf=conf, path_yaml_data=path_yaml_config)
-data_module.prepare_data()
-conf.net.num_class = len(data_module.classes_name)
-conf.data.category = data_module.classes_name
-task.set_model_label_enumeration(
-    {lbl: idx for idx, lbl in enumerate(conf.data.category)}
+data_module = ImageDataModule(
+    conf=conf, 
+    d_train=d_train, 
+    d_dataset=d_data_config, 
+    path_yaml_data=path_yaml_config
 )
+data_module.prepare_data()
+d_data_config.num_classes = len(data_module.classes_name)
+d_data_config.classes = data_module.classes_name
+
+task.set_model_label_enumeration(d_data_config.label2index())
+
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
-
 
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
@@ -162,7 +131,7 @@ checkpoint_callback.CHECKPOINT_NAME_LAST = "{epoch}-{val_acc:.2f}-{val_loss:.2f}
 early_stop_callback = EarlyStopping(
     monitor="val_acc",
     min_delta=0.01,
-    patience=4,
+    patience=5,
     verbose=False,
     mode="max",
     check_on_train_epoch_end=True,
