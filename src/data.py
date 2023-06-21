@@ -11,59 +11,48 @@ from torch.utils.data import DataLoader, Dataset
 
 from config.default import TrainingConfig
 
+from src.schema.config import DataConfig, TrainConfig, ModelConfig
 from src.data_controller.downloader.manager import DownloaderManager
 from src.data_controller.manipulator.splitter_dataset import splitter_dataset
-from src.augment import ClassificationPresetTrain, ClassificationPresetEval
+from src.augment.autosegment import ClassificationPresetTrain
+from src.augment.custom import CustomAugmentation
 import traceback
 
 
 
 class ImageDatasetBinsho(Dataset):
-    def __init__(self, data, transform, classes):
+    def __init__(self, data, transform, classes, aug_type):
         self.data = data
         self.transform = al.Compose(transform)
         self.classes = classes
+        self.aug_type = aug_type
 
     def __len__(self):
         return len(self.data)
+    
+    def read_data(self, fp_img):
+        pil_img = Image.open(fp_img)# RGB format!
+        if self.aug_type in ['custom']:
+            x_image = np.array(pil_img)   # to cv2 format
+            return self.transform(image=x_image)["image"]
+        if self.aug_type in ['ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
+            x_image = Image.open(fp_img)  # RGB format!
+            x_image = self.transform(img=x_image)
 
     def __getitem__(self, index):
         fp_img, y = self.data[index]
         y_label = torch.tensor(int(y))
-        x_image = np.array(Image.open(fp_img))  # RGB format!
-        x_image = self.transform(image=x_image)["image"]
+        x_image = self.read_data(fp_img=fp_img)
         return x_image, y_label
 
-class ImageDatasetBinshoV2(Dataset):
-    def __init__(self, data, classes, augment_policy="autoaugment", viz_mode=False):
-        """
-        augment_policy = "autoaugment" or "ra" or "augmix" or "ta_wide"
-        """
-        self.data = data
-        self.classes = classes
-        self.transform = ClassificationPresetTrain(
-            auto_augment_policy=augment_policy,
-            viz_mode=viz_mode,
-        )
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, index):
-        fp_img, y = self.data[index]
-        y_label = torch.tensor(int(y))
-        x_image = Image.open(fp_img)  # RGB format!
-        x_image = self.transform(img=x_image)
-        return x_image, y_label
-
-from src.schema.config import DataConfig, TrainConfig
 
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_dataset:DataConfig, path_yaml_data=None):
+    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_dataset:DataConfig, d_model:ModelConfig):
         super().__init__()
         self.prepare_data_has_downloaded = False
         self.d_dataset:DataConfig = d_dataset
         self.d_train:TrainConfig = d_train
+        self.d_model:ModelConfig = d_model
 
         self.data_dir = d_dataset.dir_output
         self.conf = conf
@@ -73,9 +62,27 @@ class ImageDataModule(pl.LightningDataModule):
         self.test_local_path = "/workspace/current_dataset_test"
         self.ls_test_map_dedicated = None
 
+        self.augment_type = 'custom' # custom, repo: ra, ta_wide, augmix, imagenet, cifar10, svhn
+        self.__select_augment()
+
+    
+    def __select_augment(self):
+        if self.d_dataset.augment_type not in ['custom', 'ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
+            raise Exception("your augment type not provide")
+
+        if self.d_dataset.augment_type == 'custom':
+            self.augment = CustomAugmentation(
+                input_size=self.d_model.input_size
+            )
+        else:
+            self.augment = ClassificationPresetTrain()
+
+
     # -------------------------- Main Function --------------------------
     def prepare_data(self) -> None:
         # set clearml and download the data
+        self.__select_augment()
+
 
         if not self.prepare_data_has_downloaded:
             # self.__cleaning_old_data()
@@ -128,25 +135,29 @@ class ImageDataModule(pl.LightningDataModule):
             print("we has_downloaded your data")
 
     def setup(self, stage: str):
+        self.__select_augment()
         # get list of data
         # Assign train/val datasets for use in dataloaders
         if stage == "fit":
             self.data_train = ImageDatasetBinsho(
                 self.ls_train_dataset,
-                transform=self.conf.aug.get_ls_train(),
+                transform=self.augment.get_list_train(),
                 classes=self.d_dataset.classes,
+                aug_type=self.d_dataset.augment_type
             )
             self.data_val = ImageDatasetBinsho(
                 self.ls_val_dataset,
-                transform=self.conf.aug.get_ls_val(),
+                transform=self.augment.get_list_test(),
                 classes=self.d_dataset.classes,
+                aug_type=self.d_dataset.augment_type
             )
         # Assign test dataset for use in dataloader(s)
         if stage == "test":
             self.data_test = ImageDatasetBinsho(
                 self.ls_test_dataset,
-                transform=self.conf.aug.get_ls_val(),
+                transform=self.augment.get_list_test(),
                 classes=self.d_dataset.classes,
+                aug_type=self.d_dataset.augment_type
             )
 
     def train_dataloader(self):
@@ -155,39 +166,27 @@ class ImageDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=6,
+            pin_memory=True
         )
 
     def val_dataloader(self):
         return DataLoader(
             self.data_val, 
             batch_size=int(self.batch_size), 
-            num_workers=4
+            num_workers=4,
+            pin_memory=True
+
         )
 
     def test_dataloader(self):
         return DataLoader(
             self.data_test, 
             batch_size=int(self.batch_size), 
-            num_workers=4
+            num_workers=4,
+            pin_memory=True
+
         )
 
-    # --------------------------- PRIVATE ---------------------------
-
-    def __verify_class_train_and_test(self, d_train, d_test):
-        class_name_train = d_train.keys()
-        class_name_test = d_test.keys()
-        print("class_name_train", class_name_train)
-        print("class_name_test", class_name_test)
-        for cls_name in class_name_test:
-            if cls_name not in class_name_train:
-                print(f"[ERROR] {cls_name} not in class_name_train:")
-                print(class_name_train)
-                print(
-                    "Please make sure, the class of dataset-test contain"
-                    " in dataset-train!"
-                )
-                Task.current_task().mark_failed()
-                exit()
 
     # --------------------- LOG DATA ---------------------
     def __log_distribution_data_clearml(self, d_metadata):
@@ -274,6 +273,7 @@ class ImageDataModule(pl.LightningDataModule):
                 ls_viz_data,
                 transform=self.conf.aug.get_ls_train()[:-2],
                 classes=self.classes_name,
+                aug_type=self.d_dataset.augment_type
             )
 
         if "val" in section or "test" in section:
@@ -281,6 +281,7 @@ class ImageDataModule(pl.LightningDataModule):
                 ls_viz_data,
                 transform=self.conf.aug.get_ls_val()[:-2],
                 classes=self.classes_name,
+                aug_type=self.d_dataset.augment_type
             )
 
         for i in range(len(ls_viz_data)):
@@ -293,35 +294,35 @@ class ImageDataModule(pl.LightningDataModule):
                 image=image_array,
             )
 
-    def visualize_augmented_images_v2(self, section: str, num_images=5, augment_policy="autoaugment", prefix_sec=""):
-        print(f"vizualizing v2 sample {section}...")
-        ls_viz_data = []
-        for label, ls_fp_image in self.data_train_mapped.items():
-            ls_viz_data.extend(ls_fp_image[0:num_images])
+    # def visualize_augmented_images_v2(self, section: str, num_images=5, augment_policy="autoaugment", prefix_sec=""):
+    #     print(f"vizualizing v2 sample {section}...")
+    #     ls_viz_data = []
+    #     for label, ls_fp_image in self.data_train_mapped.items():
+    #         ls_viz_data.extend(ls_fp_image[0:num_images])
 
-        random.shuffle(ls_viz_data)
-        if "train" in section:
-            dataset_viz = ImageDatasetBinshoV2(
-                ls_viz_data,
-                classes=self.classes_name,
-                augment_policy=augment_policy,
-                viz_mode=True,
-            )
+    #     random.shuffle(ls_viz_data)
+    #     if "train" in section:
+    #         dataset_viz = ImageDatasetBinshoV2(
+    #             ls_viz_data,
+    #             classes=self.classes_name,
+    #             augment_policy=augment_policy,
+    #             viz_mode=True,
+    #         )
 
-        if "val" in section or "test" in section:
-            dataset_viz = ImageDatasetBinsho(
-                ls_viz_data,
-                transform=self.conf.aug.get_ls_val()[:-2],
-                classes=self.classes_name,
-            )
+    #     if "val" in section or "test" in section:
+    #         dataset_viz = ImageDatasetBinsho(
+    #             ls_viz_data,
+    #             transform=self.conf.aug.get_ls_val()[:-2],
+    #             classes=self.classes_name,
+    #         )
 
-        for i in range(len(ls_viz_data)):
-            image_array, label = dataset_viz[i]
-            label_name = self.classes_name[label]
-            Task.current_task().get_logger().report_image(
-                f"{augment_policy}-{section}",
-                f"{label_name}_{i}",
-                iteration=1,
-                image=image_array,
-            )
+    #     for i in range(len(ls_viz_data)):
+    #         image_array, label = dataset_viz[i]
+    #         label_name = self.classes_name[label]
+    #         Task.current_task().get_logger().report_image(
+    #             f"{augment_policy}-{section}",
+    #             f"{label_name}_{i}",
+    #             iteration=1,
+    #             image=image_array,
+    #         )
 

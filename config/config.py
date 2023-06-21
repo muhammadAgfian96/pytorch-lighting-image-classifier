@@ -3,7 +3,14 @@ from config.list_optimizer import ListOptimizer
 args_data = {
     "ratio_train": 0.8,
     "ratio_val": 0.2,
-    "ratio_test": 0.0
+    "ratio_test": 0.0,
+    "augment_type": "custom",
+    "augment_preset_train": {
+        "hflip_prob": 0.5,
+        "ra_magnitude": 9,
+        "augmix_severity": 3,
+        "random_erase_prob": 0.0
+    }
 }
 
 args_train = {

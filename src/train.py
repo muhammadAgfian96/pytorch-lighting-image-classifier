@@ -57,7 +57,7 @@ Task.current_task().set_base_docker(
 Task.current_task().set_packages(packages="/workspace/requirements.txt")
 
 print(
-    """
+"""
 # ----------------------------------------------------------------------------------
 # Manage Configuration
 # ----------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ data_module = ImageDataModule(
     conf=conf, 
     d_train=d_train, 
     d_dataset=d_data_config, 
-    path_yaml_data=path_data_yaml
+    d_model=d_model
 )
 data_module.prepare_data()
 d_data_config.num_classes = len(data_module.classes_name)

@@ -22,11 +22,19 @@ class ModelConfig(BaseModel):
 class CustomConfig(BaseModel):
     tags_exclude:List[str]
 
+
+class AugmentPreset(BaseModel):
+    hflip_prob:float
+    ra_magnitude:float
+    augmix_severity:float
+    random_erase_prob:float
+
 class DataConfig(BaseModel):
-    augment:str = "custom"
     ratio_train:float
     ratio_val:float
     ratio_test:float
+    augment_type:str
+    augment_preset_train: Optional[AugmentPreset]
 
     dir_output:str = "/workspace/dataset"
     yaml_path:str = "/workspace/config/datasetsv2.yaml"
