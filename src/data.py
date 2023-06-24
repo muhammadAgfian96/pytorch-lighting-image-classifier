@@ -42,7 +42,7 @@ class ImageDatasetBinsho(Dataset):
             x_image = np.array(pil_img)   # to cv2 format
             return self.transform(image=x_image)["image"]
         if self.aug_type in ['ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
-            print("self.aug_type", self.aug_type)
+            # print("self.aug_type", self.aug_type, fp_img, pil_img.size)
             return self.transform(pil_img)
 
     def __getitem__(self, index):

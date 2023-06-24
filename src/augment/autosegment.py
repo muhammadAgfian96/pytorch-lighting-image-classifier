@@ -1,5 +1,6 @@
 import torch
 from torchvision.transforms import autoaugment, transforms
+# from torchvision.transforms.v2 import AugMix, AutoAugment, RandAugment, TrivialAugmentWide
 from torchvision.transforms.functional import InterpolationMode
 
 
@@ -61,13 +62,14 @@ class ClassificationPresetTrain:
 
         if self.hflip_prob > 0:
             trans.append(transforms.RandomHorizontalFlip(self.hflip_prob))
+            trans.append(transforms.RandomRotation(degrees=(-45, 45)))
 
         if self.auto_augment_policy is not None:
             if self.auto_augment_policy == "ra":
                 trans.append(
                     autoaugment.RandAugment(
                         interpolation=self.interpolation, 
-                        magnitude=self.ra_magnitude
+                        magnitude=int(self.ra_magnitude)
                     )
                 )
             elif self.auto_augment_policy == "ta_wide":
@@ -79,7 +81,7 @@ class ClassificationPresetTrain:
                 trans.append(
                     autoaugment.AugMix(
                         interpolation=self.interpolation, 
-                        severity=self.augmix_severity
+                        severity=int(self.augmix_severity)
                     )
                 )
             else:
@@ -89,6 +91,7 @@ class ClassificationPresetTrain:
         if backend == "pil" and not self.viz_mode:
             trans.append(transforms.PILToTensor())
 
+        
 
         if not self.viz_mode:
             trans.extend(
@@ -97,8 +100,9 @@ class ClassificationPresetTrain:
                     transforms.Normalize(mean=self.mean, std=self.std),
                 ]
             )
-        
-        if self.random_erase_prob > 0:
+
+        if not self.viz_mode and self.random_erase_prob > 0:
+            # not support PIL, so thats why we put after Normalize and pil to tensor
             trans.append(transforms.RandomErasing(p=self.random_erase_prob))
 
         return trans
