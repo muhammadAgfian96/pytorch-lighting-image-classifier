@@ -8,6 +8,7 @@ from clearml import Task
 from PIL import Image
 from rich import print
 from torch.utils.data import DataLoader, Dataset
+import torchvision.transforms as transforms
 
 from config.default import TrainingConfig
 
@@ -16,6 +17,8 @@ from src.data_controller.downloader.manager import DownloaderManager
 from src.data_controller.manipulator.splitter_dataset import splitter_dataset
 from src.augment.autosegment import ClassificationPresetTrain
 from src.augment.custom import CustomAugmentation
+
+from torchvision.transforms import transforms as tr
 import traceback
 
 
@@ -23,31 +26,34 @@ import traceback
 class ImageDatasetBinsho(Dataset):
     def __init__(self, data, transform, classes, aug_type):
         self.data = data
-        self.transform = al.Compose(transform)
         self.classes = classes
         self.aug_type = aug_type
+        if self.aug_type in ['custom']:
+            self.transform = al.Compose(transform)
+        if self.aug_type in ['ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
+            self.transform = tr.Compose(transform)
 
     def __len__(self):
         return len(self.data)
     
-    def read_data(self, fp_img):
-        pil_img = Image.open(fp_img)# RGB format!
+    def __read_data(self, fp_img):
+        pil_img = Image.open(fp_img).convert("RGB") # RGB format!
         if self.aug_type in ['custom']:
             x_image = np.array(pil_img)   # to cv2 format
             return self.transform(image=x_image)["image"]
         if self.aug_type in ['ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
-            x_image = Image.open(fp_img)  # RGB format!
-            x_image = self.transform(img=x_image)
+            print("self.aug_type", self.aug_type)
+            return self.transform(pil_img)
 
     def __getitem__(self, index):
         fp_img, y = self.data[index]
         y_label = torch.tensor(int(y))
-        x_image = self.read_data(fp_img=fp_img)
+        x_image = self.__read_data(fp_img=fp_img)
         return x_image, y_label
 
 
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_dataset:DataConfig, d_model:ModelConfig):
+    def __init__(self, d_train:TrainConfig, d_dataset:DataConfig, d_model:ModelConfig):
         super().__init__()
         self.prepare_data_has_downloaded = False
         self.d_dataset:DataConfig = d_dataset
@@ -55,34 +61,36 @@ class ImageDataModule(pl.LightningDataModule):
         self.d_model:ModelConfig = d_model
 
         self.data_dir = d_dataset.dir_output
-        self.conf = conf
         
         self.batch_size = d_train.batch
         self.path_yaml_dataset = d_dataset.yaml_path
         self.test_local_path = "/workspace/current_dataset_test"
         self.ls_test_map_dedicated = None
-
-        self.augment_type = 'custom' # custom, repo: ra, ta_wide, augmix, imagenet, cifar10, svhn
-        self.__select_augment()
-
     
-    def __select_augment(self):
+    def __select_augment(self, viz_mode=False):
         if self.d_dataset.augment_type not in ['custom', 'ra', 'ta_wide', 'augmix', 'imagenet', 'cifar10', 'svhn']:
             raise Exception("your augment type not provide")
 
         if self.d_dataset.augment_type == 'custom':
-            self.augment = CustomAugmentation(
-                input_size=self.d_model.input_size
+            return CustomAugmentation(
+                input_size=self.d_model.input_size,
+                viz_mode=viz_mode
             )
         else:
-            self.augment = ClassificationPresetTrain()
+            d_params = self.d_dataset.augment_preset_train.dict()
+            d_params["input_size"] = self.d_model.input_size
+            return ClassificationPresetTrain(
+                viz_mode=viz_mode,
+                auto_augment_policy=self.d_dataset.augment_type,
+                **d_params
+            )
+
 
 
     # -------------------------- Main Function --------------------------
     def prepare_data(self) -> None:
         # set clearml and download the data
-        self.__select_augment()
-
+        self.augment = self.__select_augment(viz_mode=False)
 
         if not self.prepare_data_has_downloaded:
             # self.__cleaning_old_data()
@@ -174,8 +182,7 @@ class ImageDataModule(pl.LightningDataModule):
             self.data_val, 
             batch_size=int(self.batch_size), 
             num_workers=4,
-            pin_memory=True
-
+            # pin_memory=True
         )
 
     def test_dataloader(self):
@@ -183,8 +190,7 @@ class ImageDataModule(pl.LightningDataModule):
             self.data_test, 
             batch_size=int(self.batch_size), 
             num_workers=4,
-            pin_memory=True
-
+            # pin_memory=True
         )
 
 
@@ -263,6 +269,7 @@ class ImageDataModule(pl.LightningDataModule):
     # --------------------- Vizualisation Augmentation ---------------------
     def visualize_augmented_images(self, section: str, num_images=5):
         print(f"vizualizing sample {section}...")
+        augment_viz = self.__select_augment(viz_mode=True)
         ls_viz_data = []
         for label, ls_fp_image in self.data_train_mapped.items():
             ls_viz_data.extend(ls_fp_image[0:num_images])
@@ -271,7 +278,7 @@ class ImageDataModule(pl.LightningDataModule):
         if "train" in section:
             dataset_viz = ImageDatasetBinsho(
                 ls_viz_data,
-                transform=self.conf.aug.get_ls_train()[:-2],
+                transform=augment_viz.get_list_train(),
                 classes=self.classes_name,
                 aug_type=self.d_dataset.augment_type
             )
@@ -279,7 +286,7 @@ class ImageDataModule(pl.LightningDataModule):
         if "val" in section or "test" in section:
             dataset_viz = ImageDatasetBinsho(
                 ls_viz_data,
-                transform=self.conf.aug.get_ls_val()[:-2],
+                transform=augment_viz.get_list_test(),
                 classes=self.classes_name,
                 aug_type=self.d_dataset.augment_type
             )
@@ -287,8 +294,12 @@ class ImageDataModule(pl.LightningDataModule):
         for i in range(len(ls_viz_data)):
             image_array, label = dataset_viz[i]
             label_name = self.classes_name[label]
+            if type(image_array) == torch.Tensor:
+                to_pil = transforms.ToPILImage()
+                image_array = to_pil(image_array)
+
             Task.current_task().get_logger().report_image(
-                f"{section}",
+                f"{section}-{self.d_dataset.augment_type}",
                 f"{label_name}_{i}",
                 iteration=1,
                 image=image_array,

@@ -1,20 +1,24 @@
 import os
 import sys
-from dataclasses import asdict
 
 import pytorch_lightning as pl
 import torch
 from clearml import Task
-from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
-                                         ModelCheckpoint)
+from pytorch_lightning.callbacks import (
+    EarlyStopping, 
+    LearningRateMonitor,
+    ModelCheckpoint
+)
 from rich import print
 
-from config.default import TrainingConfig as OldTrainingConfig
+# from config.default import TrainingConfig as OldTrainingConfig
 from src.data import ImageDataModule
 from src.net import Classifier
 from src.test import ModelPredictor
-from src.utils import (export_upload_model, make_graph_performance,
-                       override_config, receive_data_from_pipeline)
+from src.utils import (
+    export_upload_model, 
+    make_graph_performance,
+)
 
 from config.config import args_data, args_train, args_model, args_custom
 from src.schema.config import (
@@ -34,11 +38,11 @@ sys.path.append(cwd)
 # ----------------------------------------------------------------------------------
 Task.add_requirements("/workspace/requirements.txt")
 task = Task.init(
-    project_name="Debug/Template-Image-Classifier",
-    task_name="Image-Classifier-ClearML",
+    project_name="Debug/Data Module",
+    task_name="Data Modul",
     task_type=Task.TaskTypes.training,
     auto_connect_frameworks=False,
-    tags=["template-v3.0", "debug"],
+    tags=["template-v3.0", "debug", "data"],
 )
 Task.current_task().set_script(
     repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
@@ -70,7 +74,7 @@ task.connect(args_train, "3_Training")
 task.connect(args_custom, "4_Custom")
 
 path_data_yaml = "/workspace/config/datasetsv2.yaml"
-path_data_yaml = task.connect_configuration(path_data_yaml, "Datasets")
+path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
 d_data_yaml = read_yaml(path_data_yaml) 
 
 d_data_config = DataConfig(**args_data)
@@ -92,6 +96,7 @@ pl.seed_everything(32)
 print("# Data ---------------------------------------------------------------------")
 auto_batch = False
 auto_lr_find = False
+
 if d_train.batch == -1:
     auto_batch = True
     d_train.batch = 4
@@ -101,9 +106,7 @@ if d_train.lr == -1:
     auto_lr_find = True
     print("USING AUTO_LR_FIND")
 
-conf = OldTrainingConfig()
 data_module = ImageDataModule(
-    conf=conf, 
     d_train=d_train, 
     d_dataset=d_data_config, 
     d_model=d_model
@@ -116,7 +119,8 @@ task.set_model_label_enumeration(d_data_config.label2index())
 
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
-
+# task.mark_completed()
+# exit()
 print("# Callbacks -----------------------------------------------------------------")
 checkpoint_callback = ModelCheckpoint(
     monitor="val_acc",
@@ -148,7 +152,6 @@ ls_callback = [
 
 accelerator = "gpu" if torch.cuda.is_available() else "cpu"
 model_classifier = Classifier(
-    conf=conf, 
     d_train=d_train,
     d_data=d_data_config,
     d_model=d_model
