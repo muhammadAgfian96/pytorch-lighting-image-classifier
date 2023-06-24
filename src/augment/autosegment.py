@@ -26,6 +26,7 @@ class ClassificationPresetTrain:
         # crop_size,
         mean=(0.485, 0.456, 0.406),
         std=(0.229, 0.224, 0.225),
+        input_size=224,
         interpolation=InterpolationMode.BILINEAR,
         auto_augment_policy=None,
         hflip_prob=0.5,
@@ -38,6 +39,7 @@ class ClassificationPresetTrain:
 
         self.mean = mean
         self.std = std
+        self.input_size = input_size
         self.interpolation = interpolation
         self.hflip_prob = hflip_prob
         self.auto_augment_policy = auto_augment_policy
@@ -59,31 +61,47 @@ class ClassificationPresetTrain:
 
         if self.hflip_prob > 0:
             trans.append(transforms.RandomHorizontalFlip(self.hflip_prob))
+
         if self.auto_augment_policy is not None:
             if self.auto_augment_policy == "ra":
-                trans.append(autoaugment.RandAugment(interpolation=self.interpolation, magnitude=self.ra_magnitude))
+                trans.append(
+                    autoaugment.RandAugment(
+                        interpolation=self.interpolation, 
+                        magnitude=self.ra_magnitude
+                    )
+                )
             elif self.auto_augment_policy == "ta_wide":
-                trans.append(autoaugment.TrivialAugmentWide(interpolation=self.interpolation))
+                trans.append(
+                    autoaugment.TrivialAugmentWide(
+                       interpolation=self.interpolation
+                ))
             elif self.auto_augment_policy == "augmix":
-                trans.append(autoaugment.AugMix(interpolation=self.interpolation, severity=self.augmix_severity))
+                trans.append(
+                    autoaugment.AugMix(
+                        interpolation=self.interpolation, 
+                        severity=self.augmix_severity
+                    )
+                )
             else:
                 aa_policy = autoaugment.AutoAugmentPolicy(self.auto_augment_policy)
                 trans.append(autoaugment.AutoAugment(policy=aa_policy, interpolation=self.interpolation))
 
-        if backend == "pil" and self.viz_mode is False:
+        if backend == "pil" and not self.viz_mode:
             trans.append(transforms.PILToTensor())
 
-        if self.viz_mode is False:
+
+        if not self.viz_mode:
             trans.extend(
                 [
                     transforms.ConvertImageDtype(torch.float),
                     transforms.Normalize(mean=self.mean, std=self.std),
                 ]
             )
-
-        if self.random_erase_prob > 0:
+        
+        if not self.viz_mode  and self.random_erase_prob > 0:
             trans.append(transforms.RandomErasing(p=self.random_erase_prob))
 
+        return trans
 
     def get_list_test(self):
         trans = []
@@ -94,15 +112,17 @@ class ClassificationPresetTrain:
             raise ValueError(f"backend can be 'tensor' or 'pil', but got {backend}")
 
         trans += [
-            transforms.Resize(self.resize_size, interpolation=self.interpolation, antialias=True),
+            transforms.Resize(self.input_size, interpolation=self.interpolation, antialias=True),
             # transforms.CenterCrop(self.crop_size),
         ]
 
-        if backend == "pil":
-            trans.append(transforms.PILToTensor())
 
-        trans += [
-            transforms.ConvertImageDtype(torch.float),
-            transforms.Normalize(mean=self.mean, std=self.std),
-        ]
+        if self.viz_mode is False:
+            if backend == "pil":
+                trans.append(transforms.PILToTensor())
+
+            trans += [
+                transforms.ConvertImageDtype(torch.float),
+                transforms.Normalize(mean=self.mean, std=self.std),
+            ]
         return trans

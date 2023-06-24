@@ -2,7 +2,11 @@ import albumentations as al
 from albumentations.pytorch.transforms import ToTensorV2
 
 class CustomAugmentation:
-    def __init__(self, input_size , mean=(0.485, 0.456, 0.406) , std=(0.229, 0.224, 0.225)) -> None:
+    def __init__(self, 
+                 input_size , 
+                 mean=(0.485, 0.456, 0.406), 
+                 std=(0.229, 0.224, 0.225), 
+                 viz_mode=False) -> None:
         self._p_low = 0.25
         self._p_default = 0.5
         self._p_medium = 0.75
@@ -10,13 +14,17 @@ class CustomAugmentation:
         self.mean = mean
         self.std = std
         self.input_size = input_size
-
+        self.viz_mode = viz_mode
+        
     def _required_tail(self):
-        return [
+        ls_req = [
             al.Resize(height=self.input_size, width=self.input_size, always_apply=True),
             al.Normalize(mean=self.mean, std=self.std, always_apply=True, max_pixel_value=255.0),
             ToTensorV2(always_apply=True),
         ]
+        if self.viz_mode:
+            return [ls_req[0]]
+        return ls_req
 
     def get_list_train(self):
         common = [

@@ -81,7 +81,7 @@ from src.schema.config import DataConfig, TrainConfig, ModelConfig
 class Classifier(pl.LightningModule):
     def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_data:DataConfig, d_model:ModelConfig):
         super().__init__()
-        self.conf = conf
+        # self.conf = conf
         self.d_train:TrainConfig = d_train
         self.d_data:DataConfig = d_data
         self.d_model:ModelConfig = d_model
@@ -132,7 +132,6 @@ class Classifier(pl.LightningModule):
         self.cm = ConfusionMatrix(task=self.task_accuracy, num_classes=self.d_data.num_classes)
 
         self.learning_rate = self.d_train.lr
-        d_hyp = asdict(self.conf.hyp)
         self.save_hyperparameters(
             {
                 "model": {
@@ -225,7 +224,7 @@ class Classifier(pl.LightningModule):
 
         self.log("train_acc", acc_epoch)
         self.log("train_loss", loss_epoch)
-        if self.current_epoch == self.conf.hyp.epoch - 1:
+        if self.current_epoch == self.d_train.epoch - 1:
             Task.current_task().get_logger().report_single_value("train_acc", acc_epoch)
             Task.current_task().get_logger().report_single_value(
                 "train_loss", loss_epoch
@@ -282,13 +281,13 @@ class Classifier(pl.LightningModule):
 
         self.log("val_acc", acc_epoch)
         self.log("val_loss", loss_epoch)
-        if self.current_epoch == self.conf.hyp.epoch - 1:
+        if self.current_epoch == self.d_train.epoch - 1:
             Task.current_task().get_logger().report_single_value("val_acc", acc_epoch)
             Task.current_task().get_logger().report_single_value("val_loss", loss_epoch)
 
         if (
             self.current_epoch % 25 == 0
-            or self.current_epoch == self.conf.hyp.epoch - 1
+            or self.current_epoch == self.d_train.epoch - 1
         ):
             self.visualize_images(
                 test_outputs=outputs,
@@ -303,6 +302,7 @@ class Classifier(pl.LightningModule):
         imgs, labels = batch
         preds = self(imgs)
         acc = self.test_acc(preds, labels)
+        
         loss = self.test_loss(preds, labels)
 
         return {
@@ -462,12 +462,12 @@ class Classifier(pl.LightningModule):
 
         # fig_cm_val.update_xaxes(side="top")
         if section.lower() == "test":
-            iter_ = self.conf.hyp.epoch - 1
+            iter_ = self.d_train.epoch - 1
         else:
             iter_ = self.current_epoch
 
         if (
-            self.current_epoch == self.conf.hyp.epoch - 1
+            self.current_epoch == self.d_train.epoch - 1
             and section.lower() == "validation"
         ) or section.lower() == "test":
             try:
@@ -529,8 +529,8 @@ class Classifier(pl.LightningModule):
         os.makedirs(f"{FOLDER_SAVE}", exist_ok=True)
         n_row, n_col = row_x_col
         img_counter = 0
-        mean = self.conf.data.mean
-        std = self.conf.data.std
+        mean = self.d_data.mean
+        std = self.d_data.std
         gt_label_count = defaultdict(int)
 
         fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))

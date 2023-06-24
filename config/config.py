@@ -4,12 +4,12 @@ args_data = {
     "ratio_train": 0.8,
     "ratio_val": 0.2,
     "ratio_test": 0.0,
-    "augment_type": "custom",
+    "augment_type": "augmix",
     "augment_preset_train": {
-        "hflip_prob": 0.5,
+        "hflip_prob": 0.8,
         "ra_magnitude": 9,
         "augmix_severity": 3,
-        "random_erase_prob": 0.0
+        "random_erase_prob": 0.2
     }
 }
 
@@ -23,7 +23,7 @@ args_train = {
     "lr_scheduler": "reduce_on_plateau", # step/multistep/reduce_on_plateau
     "lr_step_size": 7,
     "lr_decay_rate": 0.5,
-    "precision": 16
+    "precision": 32
 }
 
 args_model = {
