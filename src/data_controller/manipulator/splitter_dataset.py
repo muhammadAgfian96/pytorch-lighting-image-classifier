@@ -1,7 +1,7 @@
 from collections import defaultdict
 from config.default import TrainingConfig
 import os
-from src.utils import check_image_health
+from utils.utils import check_image_health
 import random
 from rich import print
 from src.schema.config import DataConfig

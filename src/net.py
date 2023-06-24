@@ -21,7 +21,7 @@ from torchmetrics.functional import f1_score
 
 from config.default import TrainingConfig
 from config.list_models import list_models as ls_models_library
-from utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
+from utils.utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 
 
 def denormalize_image(image, mean, std):

@@ -1,5 +1,9 @@
+import os
 from pydantic import BaseModel
 from typing import Optional, List
+
+curr_path = os.getcwd()
+
 
 class TrainConfig(BaseModel):
     epoch:int = 10
@@ -36,8 +40,9 @@ class DataConfig(BaseModel):
     augment_type:str
     augment_preset_train: Optional[AugmentPreset]
 
-    dir_output:str = "/workspace/dataset"
-    yaml_path:str = "/workspace/config/datasetsv2.yaml"
+    dir_dataset_train:str = os.path.join(curr_path, "dataset-train")
+    dir_dataset_test:str = os.path.join(curr_path, "dataset-test")
+    yaml_path:str = os.path.join(curr_path, "config/datasetsv2.yaml")
 
     mean:Optional[List[float]] = None 
     std:Optional[List[float]] = None

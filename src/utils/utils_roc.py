@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 from clearml import Task
 from sklearn.metrics import confusion_matrix, roc_auc_score
-
+from typing import Optional
 
 def calculate_tpr_fpr(y_real, y_pred):
     """
@@ -87,7 +87,7 @@ def generate_plot_one_vs_rest(
     gt_labels: list,
     preds_softmax: np.ndarray,
     path_to_save="logger_roc",
-    task: Task | None = None,
+    task: Optional[Task] = None,
     **kwargs,
 ):
     # Plots the Probability Distributions and the ROC Curves One vs Rest
@@ -181,7 +181,7 @@ def generate_plot_one_vs_one(
     gt_labels,
     preds_softmax,
     path_to_save="logger_roc_ovo",
-    task: Task | None = None,
+    task: Optional[Task]= None,
     **d_task,
 ):
     # Plots the Probability Distributions and the ROC Curves One vs One

@@ -60,7 +60,7 @@ class ImageDataModule(pl.LightningDataModule):
         self.d_train:TrainConfig = d_train
         self.d_model:ModelConfig = d_model
 
-        self.data_dir = d_dataset.dir_output
+        self.data_dir = d_dataset.dir_dataset_train
         
         self.batch_size = d_train.batch
         self.path_yaml_dataset = d_dataset.yaml_path
@@ -113,7 +113,7 @@ class ImageDataModule(pl.LightningDataModule):
                 # Download
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
                     input_dataset=self.d_dataset.yaml_path,
-                    output_dir=self.d_dataset.dir_output
+                    output_dir=self.d_dataset.dir_dataset_train
                 )
                 
                 result =  splitter_dataset(
@@ -304,36 +304,3 @@ class ImageDataModule(pl.LightningDataModule):
                 iteration=1,
                 image=image_array,
             )
-
-    # def visualize_augmented_images_v2(self, section: str, num_images=5, augment_policy="autoaugment", prefix_sec=""):
-    #     print(f"vizualizing v2 sample {section}...")
-    #     ls_viz_data = []
-    #     for label, ls_fp_image in self.data_train_mapped.items():
-    #         ls_viz_data.extend(ls_fp_image[0:num_images])
-
-    #     random.shuffle(ls_viz_data)
-    #     if "train" in section:
-    #         dataset_viz = ImageDatasetBinshoV2(
-    #             ls_viz_data,
-    #             classes=self.classes_name,
-    #             augment_policy=augment_policy,
-    #             viz_mode=True,
-    #         )
-
-    #     if "val" in section or "test" in section:
-    #         dataset_viz = ImageDatasetBinsho(
-    #             ls_viz_data,
-    #             transform=self.conf.aug.get_ls_val()[:-2],
-    #             classes=self.classes_name,
-    #         )
-
-    #     for i in range(len(ls_viz_data)):
-    #         image_array, label = dataset_viz[i]
-    #         label_name = self.classes_name[label]
-    #         Task.current_task().get_logger().report_image(
-    #             f"{augment_policy}-{section}",
-    #             f"{label_name}_{i}",
-    #             iteration=1,
-    #             image=image_array,
-    #         )
-

@@ -98,7 +98,7 @@ class ClassificationPresetTrain:
                 ]
             )
         
-        if not self.viz_mode  and self.random_erase_prob > 0:
+        if self.random_erase_prob > 0:
             trans.append(transforms.RandomErasing(p=self.random_erase_prob))
 
         return trans

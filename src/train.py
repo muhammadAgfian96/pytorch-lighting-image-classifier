@@ -1,99 +1,31 @@
 import os
-import sys
+import src.env  # load environment variables
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from clearml import Task
-from pytorch_lightning.callbacks import (
-    EarlyStopping, 
-    LearningRateMonitor,
-    ModelCheckpoint
-)
-from rich import print
-
-# from config.default import TrainingConfig as OldTrainingConfig
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint)
 from src.data import ImageDataModule
 from src.net import Classifier
-from src.test import ModelPredictor
-from src.utils import (
-    export_upload_model, 
-    make_graph_performance,
-)
+from src.utils.clearml import clearml_init, clearml_configuration
+from src.utils.logger import LoggerStdOut
 
-from config.config import args_data, args_train, args_model, args_custom
-from src.schema.config import (
-    CustomConfig, 
-    DataConfig, 
-    ModelConfig, 
-    TrainConfig
-)
-from src.utils import read_yaml
+log = LoggerStdOut()
 
-cwd = os.getcwd()
-os.environ["PYTHONPATH"] = cwd
-sys.path.append(cwd)
-
-# ----------------------------------------------------------------------------------
 # ClearML Setup
-# ----------------------------------------------------------------------------------
-Task.add_requirements("/workspace/requirements.txt")
-task = Task.init(
-    project_name="Debug/Data Module",
-    task_name="Data Modul",
-    task_type=Task.TaskTypes.training,
-    auto_connect_frameworks=False,
-    tags=["template-v3.0", "debug", "data"],
-)
-Task.current_task().set_script(
-    repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
-    branch="new/v2",
-    working_dir=".",
-    entry_point="src/train.py",
-)
-Task.current_task().set_base_docker(
-    docker_image="pytorch/pytorch:latest",
-    docker_arguments=["--shm-size=8g", "-e PYTHONPATH=/workspace"],
-    docker_setup_bash_script=[
-        "apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx"
-        " libsm6 libxext6 libxrender-dev"
-    ],
-)
-Task.current_task().set_packages(packages="/workspace/requirements.txt")
+log.title_section('ClearML Setup')
+task = clearml_init()
 
-print(
-"""
-# ----------------------------------------------------------------------------------
-# Manage Configuration
-# ----------------------------------------------------------------------------------
-"""
-)
-
-task.connect(args_data, "1_Data")
-task.connect(args_model, "2_Model")
-task.connect(args_train, "3_Training")
-task.connect(args_custom, "4_Custom")
-
-path_data_yaml = "/workspace/config/datasetsv2.yaml"
-path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
-d_data_yaml = read_yaml(path_data_yaml) 
-
-d_data_config = DataConfig(**args_data)
-d_train = TrainConfig(**args_train)
-d_model = ModelConfig(**args_model)
-d_custom = CustomConfig(**args_custom)
+log.title_section('Configuration')
+d_data_config, d_train, d_model, d_custom = clearml_configuration()
 
 # task.execute_remotely()
 
-print(
-"""
-# ----------------------------------------------------------------------------------
-# Prepare Data, Model, Callbacks For Training 
-# ----------------------------------------------------------------------------------
-"""
-)
-pl.seed_everything(32)
+log.title_section("Prepare Data, Model, Callbacks For Training")
+pl.seed_everything(os.getenv("RANDOM_SEED", 32))
 
-print("# Data ---------------------------------------------------------------------")
+log.sub_section("Data")
 auto_batch = False
 auto_lr_find = False
 
@@ -119,9 +51,9 @@ task.set_model_label_enumeration(d_data_config.label2index())
 
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
-# task.mark_completed()
-# exit()
-print("# Callbacks -----------------------------------------------------------------")
+task.mark_completed()
+exit()
+log.sub_section("Callbacks")
 checkpoint_callback = ModelCheckpoint(
     monitor="val_acc",
     mode="max",
@@ -158,13 +90,7 @@ model_classifier = Classifier(
 )
 
 
-print(
-    """
-# ----------------------------------------------------------------------------------
-# Training and Testing 
-# ----------------------------------------------------------------------------------
-"""
-)
+log.title_section("Training and Testing")
 trainer = pl.Trainer(
     max_steps=-1,
     max_epochs=d_train.epoch,
@@ -178,6 +104,9 @@ trainer = pl.Trainer(
     log_every_n_steps=4,
     # profiler="simple"
 )
+
+tuner = pl.Tuner(trainer)
+
 data_module.setup(stage="fit")
 trainer.tune(model=model_classifier, datamodule=data_module)
 print(f">> TUNE BATCH_SIZE USE: {data_module.batch_size}")
@@ -275,13 +204,7 @@ if data_module.ls_test_map_dedicated is not None:
     )
 
 
-print(
-    """
-# ----------------------------------------------------------------------------------
-# Reporting 
-# ----------------------------------------------------------------------------------
-"""
-)
+log.title_section("Reporting")
 ls_upload_model = [
     {"name_upload": "onnx", "framework": "ONNX", "path_weights": path_onnx},
     {

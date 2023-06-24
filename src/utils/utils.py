@@ -9,7 +9,7 @@ import yaml
 from clearml import OutputModel, StorageManager, Task
 
 from config.default import TrainingConfig
-
+from typing import List
 
 def export_upload_model(conf, path_weights, name_upload, framework):
     try:
@@ -286,7 +286,7 @@ def map_data_to_dict(d_data, local_path_dir):
     return mapped
 
 
-def map_urls_to_class_and_local_path(the_set: list, ls_urls: list[str]):
+def map_urls_to_class_and_local_path(the_set: list, ls_urls: List[str]):
     # Create a reverse mapping of local_path to class
     local_path_to_class = {}
     for local_path, cls_idx in the_set:

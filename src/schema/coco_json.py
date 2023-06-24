@@ -4,10 +4,11 @@ from datetime import datetime
 from typing import Any, Optional
 from collections import defaultdict
 from pydantic import BaseModel, validator
+from typing import List, Union, Dict
 
 
 class BasicSummary(BaseModel):
-    list_names_categories: list[str]
+    list_names_categories: List[str]
     total_images: int
     total_annotations: int
     total_categories: int
@@ -15,17 +16,17 @@ class BasicSummary(BaseModel):
 
 
 class DistributionImageSize(BaseModel):
-    size_kb: list[int | float]
-    width: list[int | float]
-    height: list[int | float]
-    categories: list[str]
+    size_kb: List[Union[int,float]]
+    width: List[Union[int, float]]
+    height: List[Union[int, float]]
+    categories: List[str]
 
 
 class Summary(BaseModel):
     basic: BasicSummary
-    distribution_categories: dict[str, int]
+    distribution_categories: Dict[str, int]
     distribution_image_size: DistributionImageSize
-    # scatter_wh_color_category: dict[str, list[list[float]]]
+    # scatter_wh_color_category: dict[str, List[List[float]]]
 
 
 class Info(BaseModel):
@@ -35,10 +36,10 @@ class Info(BaseModel):
     url: str
     cvat_url: Optional[str] = None
     cvat_task_id: Optional[int] = None
-    contributor: list[str] = []
+    contributor: List[str] = []
     type_dataset: Optional[str] = None
     summary: Optional[Summary] = None
-    year: Optional[int] | Optional[str] = int(datetime.now().year)
+    year: Union[Optional[int], Optional[str]] = int(datetime.now().year)
     last_updated: Optional[str] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     date_created: Optional[str] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -100,9 +101,9 @@ class License(BaseModel):
 
 
 class MetadataImage(BaseModel):
-    basic: Optional[dict[str, Any]]
-    description: Optional[dict[str, Any]]
-    features: Optional[dict[str, Any]]
+    basic: Optional[Dict[str, Any]]
+    description: Optional[Dict[str, Any]]
+    features: Optional[Dict[str, Any]]
 
 
 class ImageCoco(BaseModel):
@@ -120,19 +121,19 @@ class AnnotationCoco(BaseModel):
     id: Optional[int]
     image_id: Optional[int]
     category_id: int
-    segmentation: Optional[list[list[float]]] = []
+    segmentation: Optional[List[List[float]]] = []
     area: Optional[float] = 0.0
-    bbox: Optional[list[float]] = []
+    bbox: Optional[List[float]] = []
     iscrowd: Optional[int] = 0
     attributes: Optional[typing.Dict[str, typing.Any]] = {}
 
 
 class CocoFormat(BaseModel):
     info: Info
-    licenses: Optional[list[License]] = [License(id=0, name="sample", url="")]
-    categories: Optional[list[Categories]] = []
-    images: Optional[list[ImageCoco]] = []
-    annotations: Optional[list[AnnotationCoco]] = []
+    licenses: Optional[List[License]] = [License(id=0, name="sample", url="")]
+    categories: Optional[List[Categories]] = []
+    images: Optional[List[ImageCoco]] = []
+    annotations: Optional[List[AnnotationCoco]] = []
 
     @validator("licenses")
     def licenses_valid(cls, v):
@@ -159,7 +160,7 @@ class CocoFormat(BaseModel):
         return v
 
     # functions
-    def get_img_urls_by_category(self) -> dict[str, list[str]]:
+    def get_img_urls_by_category(self) -> Dict[str, List[str]]:
         idcat2lblcat = {cat.id: cat.name for cat in self.categories}
         d_data = self.dict_annotations_by_img_id()
         d_image = self.dict_images_by_id()
@@ -174,20 +175,20 @@ class CocoFormat(BaseModel):
             d_download[label_name].append(d_image[img_id].url)
         return d_download
 
-    def dict_images_by_id(self) -> dict[int, ImageCoco]:
+    def dict_images_by_id(self) -> Dict[int, ImageCoco]:
         return {img.id: img for img in self.images}
 
     def get_list_images_id(self):
         return [img.id for img in self.images]
 
-    def get_annotations_by_image_id(self, image_id: int) -> list[AnnotationCoco]:
+    def get_annotations_by_image_id(self, image_id: int) -> List[AnnotationCoco]:
         annotations = [anno for anno in self.annotations if anno.image_id == image_id]
         return annotations
 
     def get_list_annotations_id(self):
         return [anno.id for anno in self.annotations]
 
-    def dict_annotations_by_img_id(self) -> dict[int, list[AnnotationCoco]]:
+    def dict_annotations_by_img_id(self) -> Dict[int, List[AnnotationCoco]]:
         dict_annotations = {}
         for img in self.images:
             dict_annotations[img.id] = self.get_annotations_by_image_id(img.id)
