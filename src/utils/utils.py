@@ -2,6 +2,7 @@ import json
 import os
 import random
 from os.path import join
+from typing import List
 
 import cv2
 import plotly.graph_objs as go
@@ -9,7 +10,7 @@ import yaml
 from clearml import OutputModel, StorageManager, Task
 
 from config.default import TrainingConfig
-from typing import List
+
 
 def export_upload_model(conf, path_weights, name_upload, framework):
     try:

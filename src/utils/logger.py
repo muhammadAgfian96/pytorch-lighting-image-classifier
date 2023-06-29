@@ -1,5 +1,7 @@
 import logging
+
 from rich import print
+
 
 class LoggerStdOut:
     def title_section(self, *args):

@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -6,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 from clearml import Task
 from sklearn.metrics import confusion_matrix, roc_auc_score
-from typing import Optional
+
 
 def calculate_tpr_fpr(y_real, y_pred):
     """

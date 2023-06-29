@@ -1,12 +1,12 @@
 import os
+from typing import Tuple
+
 from clearml import Task
 
 from config.config import args_custom, args_data, args_model, args_train
 from src.schema.config import (CustomConfig, DataConfig, ModelConfig,
                                TrainConfig)
 from src.utils.utils import read_yaml
-from typing import Tuple
-
 
 
 def clearml_init() -> Task:
