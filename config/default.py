@@ -1,13 +1,17 @@
 import sys
+
 sys.path.append('..')
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import List
-from clearml import TaskTypes
+
 import albumentations as al
-from albumentations.pytorch.transforms import ToTensorV2
-from config.list_optimizer import ListOptimizer
 import torch
+from albumentations.pytorch.transforms import ToTensorV2
+from clearml import TaskTypes
+
+from config.list_optimizer import ListOptimizer
+
 
 @dataclass
 class Config(object):

@@ -15,7 +15,7 @@ args_data = {
 
 args_train = {
     "epoch": 10,
-    "batch": -1,
+    "batch": 16,
     "optimizer": ListOptimizer.AdamW,
     "weight_decay": 0,
     "momentum": 0.9,
@@ -23,12 +23,22 @@ args_train = {
     "lr_scheduler": "reduce_on_plateau", # step/multistep/reduce_on_plateau
     "lr_step_size": 7,
     "lr_decay_rate": 0.5,
-    "precision": 32
+    "precision": 16,
+    "early_stopping": {
+        "patience": 15,
+        "min_delta": 0.01,
+        "mode": "max",
+        "monitor": "val_acc"
+    },
+    "tuner": {
+        "batch_size": False,
+        "learning_rate": False
+    }
 }
 
 args_model = {
     "input_size": 224,
-    "architecture": "tf_efficientnet_b0_ns",
+    "architecture": "tf_efficientnetv2_b0",
     "dropout": 0.0
 }
 
