@@ -1,13 +1,23 @@
 import os
+from typing import List, Optional, Union
+
 from pydantic import BaseModel
-from typing import Optional, List
 
 curr_path = os.getcwd()
 
+class EarlyStopping(BaseModel):
+    patience:int 
+    min_delta:float
+    mode:str
+    monitor:str
+
+class TunerConfig(BaseModel):
+    batch_size:bool
+    learning_rate:bool
 
 class TrainConfig(BaseModel):
     epoch:int = 10
-    batch:int = -1
+    batch:Union[int, str] = "auto"
     optimizer:str = "AdamW"
     weight_decay:float
     momentum:float
@@ -15,7 +25,9 @@ class TrainConfig(BaseModel):
     lr_scheduler:str
     lr_step_size:int
     lr_decay_rate:int
-    precision:int = 16
+    precision:Union[int, str] = 16
+    early_stopping: EarlyStopping
+    tuner: TunerConfig
 
 class ModelConfig(BaseModel):
     input_size:int
@@ -44,8 +56,8 @@ class DataConfig(BaseModel):
     dir_dataset_test:str = os.path.join(curr_path, "dataset-test")
     yaml_path:str = os.path.join(curr_path, "config/datasetsv2.yaml")
 
-    mean:Optional[List[float]] = None 
-    std:Optional[List[float]] = None
+    mean:Optional[List[float]] = [0.485, 0.456, 0.406]
+    std:Optional[List[float]] = [0.229, 0.224, 0.225]
 
     classes: Optional[List[str]]
     num_classes: Optional[int]

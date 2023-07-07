@@ -1,10 +1,10 @@
 import json
 import typing
-from datetime import datetime
-from typing import Any, Optional
 from collections import defaultdict
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
 from pydantic import BaseModel, validator
-from typing import List, Union, Dict
 
 
 class BasicSummary(BaseModel):
