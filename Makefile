@@ -4,7 +4,7 @@ IMAGE=torch-classifier:latest
 CONTAINER=dev-pl-timm-training
 
 build:
-	docker build -f docker/Dockerfile -t $(IMAGE) .
+	docker build -f Dockerfile -t $(IMAGE) .
 
 dev:
 	docker run -it --rm --gpus all \
@@ -12,6 +12,7 @@ dev:
 	-v ${PWD}:/workspace \
 	--shm-size=8g \
 	-v /home/binshoadmin/clearml.conf:/root/clearml.conf \
+	--userns=host \
 	--name $(CONTAINER) \
 	$(IMAGE) bash
 
@@ -29,3 +30,6 @@ ls-models:
 
 exec:
 	docker exec -it $(CONTAINER) bash
+
+run-train:
+	PYTHONPATH=$(PWD) python src/train.py
