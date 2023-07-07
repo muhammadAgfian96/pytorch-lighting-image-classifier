@@ -9,9 +9,9 @@ from collections import defaultdict
 import clearml
 from clearml import Dataset, StorageManager, Task
 from rich import print
-from src.data_controller.utils import  MinioDatasetDownloader
-from src.schema.coco_json import CocoFormat
 
+from src.data_controller.utils import MinioDatasetDownloader
+from src.schema.coco_json import CocoFormat
 
 dataset_input = "f580a16f0d8e466d9ec79d12d15e071d|[*:3]"
 

@@ -1,10 +1,12 @@
-from collections import defaultdict
-from config.default import TrainingConfig
 import os
-from utils.utils import check_image_health
 import random
+from collections import defaultdict
+
 from rich import print
+
+from config.default import TrainingConfig
 from src.schema.config import DataConfig
+from utils.utils import check_image_health
 
 random.seed(1) 
 

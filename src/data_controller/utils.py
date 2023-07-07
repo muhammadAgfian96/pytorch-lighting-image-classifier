@@ -1,6 +1,7 @@
 import os
-from concurrent.futures import ThreadPoolExecutor
 import time
+from concurrent.futures import ThreadPoolExecutor
+
 from minio import Minio
 
 

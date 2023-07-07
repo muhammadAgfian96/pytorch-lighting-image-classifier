@@ -1,9 +1,11 @@
 
-from clearml import StorageManager
 from collections import defaultdict
-from src.data_controller.utils import MinioDatasetDownloader
 from urllib.parse import urljoin
+
+from clearml import StorageManager
 from rich import print
+
+from src.data_controller.utils import MinioDatasetDownloader
 
 
 class S3DirectoryDownloader:

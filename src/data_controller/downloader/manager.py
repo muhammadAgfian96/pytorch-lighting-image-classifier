@@ -1,10 +1,15 @@
-import shutil
 import os
-from src.data_controller.downloader.sub_clearml_ds import ClearmlDatasetDownloader
-from src.data_controller.downloader.sub_s3_directory_ds import S3DirectoryDownloader
-from src.data_controller.utils import MinioDatasetDownloader
-from rich import print
+import shutil
+
 import yaml
+from rich import print
+
+from src.data_controller.downloader.sub_clearml_ds import \
+    ClearmlDatasetDownloader
+from src.data_controller.downloader.sub_s3_directory_ds import \
+    S3DirectoryDownloader
+from src.data_controller.utils import MinioDatasetDownloader
+
 
 class DownloaderManager:
     def __init__(self):
@@ -36,7 +41,7 @@ class DownloaderManager:
     def __download_datasets_from_yaml(self, ls_dataset, output_dir_section):
         for number, ds in enumerate(ls_dataset, start=1):
             if '/' in ds:
-                print(f'{number}. 🌐 YAML: S3 Directory')
+                print(f'{number}. 🗑️ YAML: S3 Directory')
                 # urls fetcher
                 self.s3_dir_downloader.download(
                     craetion_minio_downloader=self.minio_downloader,
@@ -45,7 +50,7 @@ class DownloaderManager:
                 )
             else:
                 # clearml id with coco fetcher
-                print(f'{number}. 🇨  YAML: clearml_id')
+                print(f'{number}. 🍈 YAML: clearml_id')
                 self.clearml_downloader.download(
                     creation_minio_downloader=self.minio_downloader,
                     dataset_input=ds,
