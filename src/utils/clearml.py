@@ -18,8 +18,8 @@ def clearml_init() -> Task:
 
     Task.add_requirements(req_path)
     task:Task = Task.init(
-        project_name="Debug/Data Module",
-        task_name="Data Modul",
+        project_name="Debug/New Template",
+        task_name="Image Classifier",
         task_type=Task.TaskTypes.training,
         auto_connect_frameworks=False,
         tags=tags,
@@ -48,9 +48,9 @@ def clearml_configuration() -> Tuple[DataConfig, TrainConfig, ModelConfig, Custo
     task.connect(args_train, "3_Training")
     task.connect(args_custom, "4_Custom")
 
+    # update dataset yaml via clearml ui
     path_data_yaml = os.path.join(os.getcwd(),"config/datasetsv2.yaml")
     path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
-    d_data_yaml = read_yaml(path_data_yaml) 
 
     d_data_config = DataConfig(**args_data)
     d_train = TrainConfig(**args_train)

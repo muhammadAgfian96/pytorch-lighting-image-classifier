@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import os
 import random
@@ -8,6 +9,11 @@ import cv2
 import plotly.graph_objs as go
 import yaml
 from clearml import OutputModel, StorageManager, Task
+
+import matplotlib.pyplot as plt
+from PIL import Image
+import torch
+
 
 from config.default import TrainingConfig
 
@@ -307,6 +313,143 @@ def map_urls_to_class_and_local_path(the_set: list, ls_urls: List[str]):
 
     return output
 
+def denormalize_image(image, mean, std):
+    img_copy = image.copy()
+    print("img_copy.shape:",img_copy.shape)
+    for i in range(img_copy.shape[2]):
+        img_copy[:, :, i] = img_copy[:, :, i] * std[i] + mean[i]
+    return img_copy
+
+def denormalize_imagev2(img, mean, std):
+    if img is None:
+        raise ValueError("img is None")
+    if mean is None or std is None:
+        raise ValueError("mean or std is None")
+
+    img_copy = img.copy()
+
+    # Memastikan img_copy memiliki dimensi dan tipe data yang benar
+    if img_copy.shape[-1] != 3:
+        raise ValueError("img_copy should have 3 dimensions")
+    # if img_copy.dtype != torch.float16:
+    #     raise ValueError("img_copy should have dtype torch.float16")
+
+    # Memastikan mean dan std memiliki panjang yang benar
+    # if len(mean) != img_copy.shape[2] or len(std) != img_copy.shape[2]:
+    #     raise ValueError("Length of mean and std should match the number of channels")
+
+    # Melakukan denormalisasi
+    for i in range(img_copy.shape[-1]):
+        img_copy[:, :, i] = img_copy[:, :, i] * std[i] + mean[i]
+
+    return img_copy
+
+
+def visualize_images(test_outputs,
+        epoch,
+        section,
+        row_x_col=(5, 5),
+        upload_to_clearml=True,
+        gt_label_limit=50,
+    ):
+        FOLDER_SAVE = "logger_predict"
+        os.makedirs(FOLDER_SAVE, exist_ok=True)
+
+        n_row, n_col = row_x_col
+        img_counter = 0
+        mean = self.d_data.mean
+        std = self.d_data.std
+        gt_label_count = defaultdict(int)
+
+        fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+        fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
+        for batch_idx in range(len(test_outputs)):
+            batch_images = test_outputs[batch_idx]["imgs"]
+            batch_labels = test_outputs[batch_idx]["labels"]
+            batch_preds = test_outputs[batch_idx]["preds"]
+
+            for sample_idx in range(len(batch_images)):
+                gt_label = batch_labels[sample_idx].item()
+                if gt_label_count[gt_label] > gt_label_limit:
+                    continue
+                gt_label_count[gt_label] += 1
+
+                img = batch_images[sample_idx].permute(1, 2, 0).cpu().numpy()
+                img = denormalize_image(img, mean, std)
+
+                pred_label = batch_preds[sample_idx].argmax(dim=-1).item()
+                confidence = batch_preds[sample_idx].softmax(dim=-1).max().item()
+                conf = round(confidence * 100, 2)
+
+                title_color = "green" if pred_label == gt_label else "red"
+                name_gt = self.classes_name[gt_label]
+                name_pred = self.classes_name[pred_label]
+
+                row_idx = img_counter // n_col
+                col_idx = img_counter % n_col
+
+                if n_row > 1:
+                    ax = axes[row_idx, col_idx]
+                else:
+                    ax = axes[col_idx]
+
+                # add to plot every image
+                ax.imshow(img)
+                ax.set_title(f"{name_gt} vs {name_pred} ({conf})", color=title_color)
+                ax.axis("off")
+
+                img_counter += 1
+
+                # If 25 images are displayed, reset the counter and create a new figure
+                # and clear the plot
+                if img_counter == n_row * n_col:
+                    plt.tight_layout()
+                    naming_file = (
+                        f"{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}"
+                    )
+                    path_file_predict = f"{FOLDER_SAVE}/{naming_file}.jpg"
+                    plt.savefig(path_file_predict)
+                    plt.close()
+                    if upload_to_clearml:
+                        Task.current_task().get_logger().report_image(
+                            f"{section.capitalize()}-Predict",
+                            naming_file,
+                            iteration=epoch,
+                            image=Image.open(path_file_predict),
+                        )
+                    # reset and create again
+                    img_counter = 0
+                    fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+                    fig.subplots_adjust(hspace=0.5, wspace=0.5)
+
+            # Show the remaining images in the last grid, if there are any
+            if img_counter > 0:
+                for i in range(img_counter, n_row * n_col):
+                    row_idx = i // n_col
+                    col_idx = i % n_col
+                    if n_row > 1:
+                        axes[row_idx, col_idx].axis("off")
+                    else:
+                        axes[col_idx].axis("off")
+
+                plt.tight_layout()
+                naming_file = (
+                    f"{section.upper()}_b{batch_idx}_s{sample_idx}_e{epoch}_last"
+                )
+                path_file_predict = f"{FOLDER_SAVE}/{naming_file}.jpg"
+                plt.savefig(path_file_predict)
+                plt.close()
+                if upload_to_clearml:
+                    Task.current_task().get_logger().report_image(
+                        f"{section.capitalize()}-Predict",
+                        naming_file,
+                        iteration=epoch,
+                        image=Image.open(path_file_predict),
+                    )
+                img_counter = 0
+                fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
+                fig.subplots_adjust(hspace=0.5, wspace=0.5)
 
 def make_graph_performance(torchscript_performance, onnx_performance):
     print("Generating Graph Performance")
