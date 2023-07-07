@@ -1,6 +1,7 @@
+from clearml import Task
+
 from config.default import TrainingConfig
 from src.data import ImageDataModule
-from clearml import Task
 
 task = Task.init(
     project_name="Debug/Data-Module",
