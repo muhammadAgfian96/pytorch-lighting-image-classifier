@@ -3,7 +3,6 @@ from torchvision.transforms import autoaugment, transforms
 # from torchvision.transforms.v2 import AugMix, AutoAugment, RandAugment, TrivialAugmentWide
 from torchvision.transforms.functional import InterpolationMode
 
-
 # class InterpolationMode(Enum):
 #     """Interpolation modes
 #     Available interpolation methods are ``nearest``, ``nearest-exact``, ``bilinear``, ``bicubic``, ``box``, ``hamming``,

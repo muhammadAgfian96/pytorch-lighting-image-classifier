@@ -1,6 +1,7 @@
 import albumentations as al
 from albumentations.pytorch.transforms import ToTensorV2
 
+
 class CustomAugmentation:
     def __init__(self, 
                  input_size , 
