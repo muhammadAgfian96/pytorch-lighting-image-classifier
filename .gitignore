@@ -8,9 +8,13 @@ dataset
 export_model
 debug
 logger_predict
+logger_roc*
 exports
 .ruff*
 *.png
 current_dataset*
 .ruff*
 *.pytest_cache*
+.env
+tmp
+.vscode/settings.json
