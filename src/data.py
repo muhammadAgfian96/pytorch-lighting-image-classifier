@@ -1,26 +1,23 @@
 import random
+import traceback
+
 import albumentations as al
+import lightning.pytorch as pl
 import numpy as np
 import plotly.graph_objects as go
-import pytorch_lightning as pl
 import torch
+import torchvision.transforms as transforms
 from clearml import Task
 from PIL import Image
 from rich import print
 from torch.utils.data import DataLoader, Dataset
-import torchvision.transforms as transforms
+from torchvision.transforms import transforms as tr
 
-from config.default import TrainingConfig
-
-from src.schema.config import DataConfig, TrainConfig, ModelConfig
-from src.data_controller.downloader.manager import DownloaderManager
-from src.data_controller.manipulator.splitter_dataset import splitter_dataset
 from src.augment.autosegment import ClassificationPresetTrain
 from src.augment.custom import CustomAugmentation
-
-from torchvision.transforms import transforms as tr
-import traceback
-
+from src.data_controller.downloader.manager import DownloaderManager
+from src.data_controller.manipulator.splitter_dataset import splitter_dataset
+from src.schema.config import DataConfig, ModelConfig, TrainConfig
 
 
 class ImageDatasetBinsho(Dataset):
@@ -116,19 +113,17 @@ class ImageDataModule(pl.LightningDataModule):
                     output_dir=self.d_dataset.dir_dataset_train
                 )
                 
-                result =  splitter_dataset(
-                    d_dataset=self.d_dataset,
-                    path_dir_train=output_dir_train,
-                    path_dir_test=output_dir_test
-                )
-
                 (
                     self.data_train_mapped, 
                     self.ls_train_dataset, 
                     self.ls_val_dataset, 
                     self.ls_test_dataset, 
                     self.d_metadata
-                ) = result
+                ) =  splitter_dataset(
+                    d_dataset=self.d_dataset,
+                    path_dir_train=output_dir_train,
+                    path_dir_test=output_dir_test
+                )
                 
                 self.classes_name = self.d_metadata.get('class_names')
                 self.__log_distribution_data_clearml(self.d_metadata)
@@ -182,7 +177,7 @@ class ImageDataModule(pl.LightningDataModule):
             self.data_val, 
             batch_size=int(self.batch_size), 
             num_workers=4,
-            # pin_memory=True
+            pin_memory=True
         )
 
     def test_dataloader(self):
@@ -190,7 +185,7 @@ class ImageDataModule(pl.LightningDataModule):
             self.data_test, 
             batch_size=int(self.batch_size), 
             num_workers=4,
-            # pin_memory=True
+            pin_memory=True
         )
 
 
@@ -252,12 +247,6 @@ class ImageDataModule(pl.LightningDataModule):
 
         # Create a figure object that contains the traces and layout
         fig_bar_class = go.Figure(data=[trace1, trace2, trace3], layout=layout)
-
-        # Update the font and background colors of the chart
-        # fig_bar_class.update_layout(
-        #   font=dict(color='white'),
-        #   plot_bgcolor='#2c3e50',
-        #   paper_bgcolor='#2c3e50')
 
         Task.current_task().get_logger().report_plotly(
             title="Data Distribution Section",

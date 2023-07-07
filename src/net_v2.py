@@ -30,8 +30,8 @@ class ModelCreation:
         self.num_classes = num_classes
         self.num_classes = dropout
 
-        print(timm.list_models())
-        print(architecture not in timm.list_models())
+        # print(timm.list_models())
+        print(architecture in timm.list_models())
         if architecture not in timm.list_models():
             model_old = InputModel(model_id=self.architecture)
             self.architecture = model_old.config_dict["net"]
@@ -60,25 +60,23 @@ class ModelCreation:
 class ModelClassifier(pl.LightningModule):
     def __init__(self, d_train:TrainConfig, d_data:DataConfig, d_model:ModelConfig) -> None:
         super().__init__()
+        self.initial_vram_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # Convert to MB
+
         self.model = ModelCreation(
             architecture=d_model.architecture,
             num_classes=d_data.num_classes,
             dropout=d_model.dropout
         ).model
+
+        self.final_vram_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # Convert to MB
+
         self.d_train = d_train
         self.d_data = d_data
         self.d_model = d_model
 
-
         self.learning_rate = d_train.lr
 
         self.loss_fn = torch.nn.CrossEntropyLoss()
-        self.train_acc = tm.Accuracy(task="multiclass", num_classes=d_data.num_classes)
-        self.train_f1 = tm.F1Score(task="multiclass", num_classes=d_data.num_classes)
-        self.val_acc = tm.Accuracy(task="multiclass", num_classes=d_data.num_classes)
-        self.val_f1 = tm.F1Score(task="multiclass", num_classes=d_data.num_classes)
-        self.test_acc = tm.Accuracy(task="multiclass", num_classes=d_data.num_classes)
-        self.test_f1 = tm.F1Score(task="multiclass", num_classes=d_data.num_classes)
 
         self.output_train_step = OutputStep()
         self.output_val_step = OutputStep()
@@ -119,7 +117,8 @@ class ModelClassifier(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         loss, preds, labels = self._common_step(batch, batch_idx)
-        self.output_test_step.add(loss, preds, labels)
+        imgs, y = batch
+        self.output_test_step.add(loss, preds, labels, imgs)
         return loss
 
     def _common_step(self, batch, batch_idx):

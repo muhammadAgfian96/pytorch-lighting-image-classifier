@@ -2,16 +2,17 @@ import os
 from collections import defaultdict
 from dataclasses import asdict
 
+import lightning.pytorch as pl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import pytorch_lightning as pl
 import timm
 import torch
 import torch.optim as optim
 from clearml import InputModel, Task
+from lightning.pytorch.core import LightningModule
 from PIL import Image
 from rich import print
 from sklearn.metrics import precision_recall_fscore_support
@@ -19,8 +20,8 @@ from torchmetrics import (  # AUROC, AUC, ROC,; F1Score, Precision, Recall,; Pre
     AUROC, ROC, Accuracy, ConfusionMatrix)
 from torchmetrics.functional import f1_score
 
-from config.default import TrainingConfig
 from config.list_models import list_models as ls_models_library
+from src.schema.config import DataConfig, ModelConfig, TrainConfig
 from utils.utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 
 
@@ -77,9 +78,13 @@ def get_lr_scheduler_config(
 
     return lr_scheduler_config, scheduler
 
-from src.schema.config import DataConfig, TrainConfig, ModelConfig
-class Classifier(pl.LightningModule):
-    def __init__(self, conf: TrainingConfig, d_train:TrainConfig, d_data:DataConfig, d_model:ModelConfig):
+class ModelCreation:
+    def __init__(self) -> None:
+        pass
+
+
+class Classifier(LightningModule):
+    def __init__(self, d_train:TrainConfig, d_data:DataConfig, d_model:ModelConfig):
         super().__init__()
         # self.conf = conf
         self.d_train:TrainConfig = d_train
@@ -101,7 +106,6 @@ class Classifier(pl.LightningModule):
             pretrained=self.d_model.path_pretrained,
             num_classes=self.d_data.num_classes,
             drop_rate=self.d_model.dropout,
-            # checkpoint_path=(self.conf.net.checkpoint_model),
         )
 
         if self.d_model.path_pretrained is not None:
@@ -148,6 +152,10 @@ class Classifier(pl.LightningModule):
                 "hyperparameters": self.d_train.dict(),
             }
         )
+
+        self.val_step_outputs = []
+        self.train_step_outputs = []
+        self.test_step_outputs = []
 
     def forward(self, imgs):
         # Forward function that is run when visualizing the graph
@@ -207,17 +215,17 @@ class Classifier(pl.LightningModule):
 
         return {"preds": preds, "labels": labels, "loss": loss, "acc": acc}
 
-    def training_step_end(self, training_step_outputs):
-        return training_step_outputs
+    # def on_train_batch_end(self, training_step_outputs):
+    #     return training_step_outputs
 
-    def training_epoch_end(self, outs):
+    def on_train_epoch_end(self, outs):
         # compile log
         (
             labels_epoch,
             preds_epoch,
             loss_epoch,
             acc_epoch,
-        ) = self.__get_metrics_epoch(outs)
+        ) = self.__get_metrics_epocch(outs)
         self.__send_logger_clearml(
             labels_epoch, preds_epoch, loss_epoch, acc_epoch, section="Train"
         )
@@ -252,6 +260,7 @@ class Classifier(pl.LightningModule):
             value=loss,
             iteration=self.global_step,
         )
+        
         return {
             "preds": y_hat,
             "labels": y,
@@ -260,10 +269,10 @@ class Classifier(pl.LightningModule):
             "imgs": imgs,
         }
 
-    def validation_step_end(self, validation_step_outputs):
-        return validation_step_outputs
+    # def validation_step_end(self, validation_step_outputs):
+    #     return validation_step_outputs
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
         # compile log
         (
             labels_epoch,
@@ -313,10 +322,10 @@ class Classifier(pl.LightningModule):
             "imgs": imgs,
         }
 
-    def test_step_end(self, test_step_outputs):
-        return test_step_outputs
+    # def on_test_batch_end(self, test_step_outputs):
+    #     return test_step_outputs
 
-    def test_epoch_end(self, outputs) -> None:
+    def on_test_epoch_end(self, outputs) -> None:
         # get data
         (
             labels_epoch,
