@@ -58,19 +58,11 @@ class CallbackClearML(Callback):
         self.__generate_report_epoch_end(section="val", **args)
         pl_module.output_val_step.clear()
 
-    # def on_test_batch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier, outputs, batch, batch_idx):
-        # _, preds, labels, imgs = pl_module.output_test_step.get()
-        # self.__visualize_images(
-        #     imgs=imgs, labels=labels, preds=preds,
-        #     epoch=pl_module.current_epoch, section="test",
-        #     pl_module= pl_module
-        # )
-        
 
     def on_test_epoch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier):
         losses, preds, labels, imgs = pl_module.output_test_step.get()
         args = {
-            "trainer": trainer, 
+            "trainer": trainer,
             "pl_module": pl_module, 
             "losses": losses, 
             "preds": preds, 
@@ -161,21 +153,19 @@ class CallbackClearML(Callback):
             index=[lbl + "_gt" for lbl in pl_module.d_data.classes],
             columns=[lbl + "_pd" for lbl in pl_module.d_data.classes],
         )
+
+        if section == "test":
+            color_map = px.colors.sequential.Reds
+        if section == "val":
+            color_map = px.colors.sequential.Blues
+        if section == "train":
+            color_map = px.colors.sequential.Greens
         fig_cm = px.imshow(
             df_cm,
             text_auto=True,
-            color_continuous_scale=px.colors.sequential.Blues,
+            color_continuous_scale=color_map,
         )
-        # self.logger.report_confusion_matrix(
-        #     title="Confusion Matrix Logger", 
-        #     series=f"{section.capitalize()}", 
-        #     matrix=tensor_cm.cpu().numpy(), 
-        #     iteration=pl_module.current_epoch,
-        #     xaxis="Predicted",
-        #     yaxis="Ground Truth", 
-        #     xlabels=pl_module.d_data.classes,
-        #     ylabels=pl_module.d_data.classes,
-        # )
+
         self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()}", iteration=pl_module.current_epoch, figure=fig_cm) 
 
     
