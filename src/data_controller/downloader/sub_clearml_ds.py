@@ -120,7 +120,8 @@ class ClearmlDatasetDownloader:
             self, 
             creation_minio_downloader:MinioDatasetDownloader, 
             dataset_input:str, 
-            output_dir:str="./datadir-debug"
+            output_dir:str="./datadir-debug",
+            exclude_tags:list=[]
         ):
         """
         return outputdir
@@ -144,7 +145,7 @@ class ClearmlDatasetDownloader:
         print(f"\t distribution_raw -> {coco_format.info.summary.distribution_categories}")
 
         # Get image URLs by category
-        urls_by_category = coco_format.get_img_urls_by_category()
+        urls_by_category = coco_format.get_img_urls_by_category(exclude_tags=exclude_tags)
 
         # Apply query and get filtered URLs by category
         if limit_query is None:
@@ -166,4 +167,5 @@ class ClearmlDatasetDownloader:
 
 if __name__ == "__main__":
     print("start")
+    
     print("done")

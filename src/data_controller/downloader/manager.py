@@ -38,7 +38,7 @@ class DownloaderManager:
 
         return d_dataset
 
-    def __download_datasets_from_yaml(self, ls_dataset, output_dir_section):
+    def __download_datasets_from_yaml(self, ls_dataset, output_dir_section, exclude_tags=[]):
         for number, ds in enumerate(ls_dataset, start=1):
             if '/' in ds:
                 print(f'{number}. 🗑️ YAML: S3 Directory')
@@ -54,10 +54,11 @@ class DownloaderManager:
                 self.clearml_downloader.download(
                     creation_minio_downloader=self.minio_downloader,
                     dataset_input=ds,
-                    output_dir=output_dir_section
+                    output_dir=output_dir_section,
+                    exclude_tags=exclude_tags
                 )
 
-    def fetch(self, input_dataset, output_dir):
+    def fetch(self, input_dataset, output_dir, exclude_tags=[]):
         print('[FETCHING DATASET]>>>>>>>>>>>>>>>>>>>>>')
         path_dir_train, path_dir_test = self.__create_output_dir(output_dir)
         
@@ -79,7 +80,8 @@ class DownloaderManager:
                 print('\n[TRAINING DATASET]')
                 self.__download_datasets_from_yaml(
                     d_dataset['dataset-train'], 
-                    output_dir_section=path_dir_train
+                    output_dir_section=path_dir_train,
+                    exclude_tags=exclude_tags
                 )
 
             if d_dataset.get('dataset-test'):

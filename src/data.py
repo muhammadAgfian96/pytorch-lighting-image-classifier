@@ -17,7 +17,7 @@ from src.augment.autosegment import ClassificationPresetTrain
 from src.augment.custom import CustomAugmentation
 from src.data_controller.downloader.manager import DownloaderManager
 from src.data_controller.manipulator.splitter_dataset import splitter_dataset
-from src.schema.config import DataConfig, ModelConfig, TrainConfig
+from src.schema.config import DataConfig, ModelConfig, TrainConfig, CustomConfig
 
 
 class ImageDatasetBinsho(Dataset):
@@ -50,12 +50,13 @@ class ImageDatasetBinsho(Dataset):
 
 
 class ImageDataModule(pl.LightningDataModule):
-    def __init__(self, d_train:TrainConfig, d_dataset:DataConfig, d_model:ModelConfig):
+    def __init__(self, d_train:TrainConfig, d_dataset:DataConfig, d_model:ModelConfig, d_custom:CustomConfig=None):
         super().__init__()
         self.prepare_data_has_downloaded = False
         self.d_dataset:DataConfig = d_dataset
         self.d_train:TrainConfig = d_train
         self.d_model:ModelConfig = d_model
+        self.d_custom_config:CustomConfig = d_custom
 
         self.data_dir = d_dataset.dir_dataset_train
         
@@ -110,7 +111,8 @@ class ImageDataModule(pl.LightningDataModule):
                 # Download
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
                     input_dataset=self.d_dataset.yaml_path,
-                    output_dir=self.d_dataset.dir_dataset_train
+                    output_dir=self.d_dataset.dir_dataset_train,
+                    exclude_tags=self.d_custom_config.tags_exclude
                 )
                 
                 (

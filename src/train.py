@@ -33,7 +33,8 @@ log.sub_section("Setup Data")
 data_module = ImageDataModule(
     d_train=d_train, 
     d_dataset=d_data_config, 
-    d_model=d_model
+    d_model=d_model,
+    d_custom=d_custom
 )
 data_module.prepare_data()
 d_data_config.num_classes = len(data_module.classes_name)

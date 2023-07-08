@@ -160,7 +160,12 @@ class CocoFormat(BaseModel):
         return v
 
     # functions
-    def get_img_urls_by_category(self) -> Dict[str, List[str]]:
+    def get_img_urls_by_category(self, exclude_tags:List = []) -> Dict[str, List[str]]:
+        """
+        expected only one annotation per image
+        """
+        exclude_tags = [tag.lower() for tag in exclude_tags]
+
         idcat2lblcat = {cat.id: cat.name for cat in self.categories}
         d_data = self.dict_annotations_by_img_id()
         d_image = self.dict_images_by_id()
@@ -168,10 +173,10 @@ class CocoFormat(BaseModel):
         for img_id, anns in d_data.items():
             ann = anns[0]
             label_name = idcat2lblcat[ann.category_id]
-
-            # if len(d_download[label_name]) > 5:
-            #     continue
-
+            ann.attributes.get("tags", [])
+            if any([tag.lower() in exclude_tags for tag in ann.attributes.get("tags", [])]):
+                print(f"skipping {img_id} because of tags", ann.attributes.get("tags", []))
+                continue
             d_download[label_name].append(d_image[img_id].url)
         return d_download
 
