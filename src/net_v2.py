@@ -22,6 +22,24 @@ from config.list_models import list_models as ls_models_library
 from src.schema.config import DataConfig, ModelConfig, TrainConfig
 from utils.utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 from schema.net_v2 import OutputStep
+from timm.optim.optim_factory import create_optimizer 
+
+import timm
+import uuid
+
+def is_uuid(name):
+    # Check if the name is a timm model
+    name_model = name.replace("timm/", "")
+    if name_model in timm.list_models():
+        return True
+    
+    # Check if the name is a valid UUID
+    try:
+        uuid.UUID(name, version=4)
+        return True
+    except ValueError:
+        return False
+
 
 class ModelCreation:
     def __init__(self, architecture:str, num_classes:int, dropout:float) -> None:
@@ -32,7 +50,7 @@ class ModelCreation:
 
         # print(timm.list_models())
         print(architecture in timm.list_models())
-        if architecture not in timm.list_models():
+        if is_uuid(architecture):
             model_old = InputModel(model_id=self.architecture)
             self.architecture = model_old.config_dict["net"]
             print("dowloding model", model_old.config_dict)
@@ -42,7 +60,7 @@ class ModelCreation:
 
         self.model = timm.create_model(
             self.architecture,
-            pretrained=self.path_pretrained,
+            pretrained=self.path_pretrained or True,
             num_classes=num_classes,
             drop_rate=dropout,
         )
@@ -95,6 +113,7 @@ class ModelClassifier(pl.LightningModule):
             "Adagrad": optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
             "Adamax": optim.Adamax(self.model.parameters(), lr=self.learning_rate),
         }
+        optim.Lamb
 
         optimizer = opt_d.get(
             self.d_train.optimizer,
