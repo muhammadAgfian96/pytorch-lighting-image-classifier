@@ -110,7 +110,7 @@ if d_train.tuner.batch_size:
         mode="binsearch",
         steps_per_trial=6
     )
-    Task.current_task().set_parameter("5_Tuner/batch_size_finder", batch_size_finder)
+    Task.current_task().set_parameter("_Autoset/batch_size_finder", batch_size_finder)
 
 if d_train.tuner.learning_rate:
     lr_finder = tuner.lr_find(
@@ -124,7 +124,7 @@ if d_train.tuner.learning_rate:
     )
     fig = lr_finder.plot(suggest=True)
     Task.current_task().get_logger().report_matplotlib_figure("lr_finder", "lr_finder", iteration=0, figure=fig)
-    Task.current_task().set_parameter("5_Tuner/lr_finder", lr_finder.suggestion())
+    Task.current_task().set_parameter("_autoset/lr_finder", lr_finder.suggestion())
 
 data_module.setup(stage="fit")
 trainer.fit(model=model_classifier, datamodule=data_module)
