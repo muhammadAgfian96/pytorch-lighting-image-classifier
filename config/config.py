@@ -31,14 +31,14 @@ args_train = {
         "monitor": "val_acc"
     },
     "tuner": {
-        "batch_size": False,
+        "batch_size": True,
         "learning_rate": False
     }
 }
 
 args_model = {
     "input_size": 224,
-    "architecture": "tf_efficientnetv2_b0",
+    "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
     "dropout": 0.0
 }
 
