@@ -1,6 +1,54 @@
 dataset-train:
-- app-data-workflow/dataset-playground/Vegetables/train
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day1/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day1/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day1/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day1/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day1/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day2/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day2/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day2/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day2/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day2/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day3/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day3/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day3/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day3/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day3/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day4/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day4/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day4/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day4/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day5/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day5/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day5/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_erica_day5/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day1/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day1/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day1/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day1/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day2/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day2/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day2/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day2/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day2/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day3/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day3/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day3/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day3/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day3/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day4/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day4/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day4/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day4/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day4/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Overripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Ripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Underripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Unripe
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_retry/maturity
+- app-data-workflow/dataset-dev/IOI/dataset-old-IOI-2022-08-20-curated-datacol/maturity
 
 dataset-test:
-- app-data-workflow/dataset-playground/Vegetables/test # asd
-# - app-data-workflow/dataset-feedback/Bousteud/2023-02-26/63fc1f203e5add078f7898c4/Empty
+- app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_valset/maturity
+ 

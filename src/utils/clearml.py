@@ -11,7 +11,7 @@ from src.utils.utils import read_yaml
 
 def clearml_init() -> Task:
     req_path = os.path.join(os.getcwd(), 'requirements.txt')
-    tags = ["template-v4.0"]
+    tags = ["🏷️ v4.0"]
     if os.getenv("MODE_TEMPLATE", "remote") == "debug":
         tags.append("debug")
 
@@ -23,6 +23,8 @@ def clearml_init() -> Task:
         task_type=Task.TaskTypes.training,
         auto_connect_frameworks=False,
         tags=tags,
+        reuse_last_task_id=False,
+        
     )
     task.set_script(
         repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",

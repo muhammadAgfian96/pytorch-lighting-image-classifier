@@ -54,7 +54,7 @@ class DataConfig(BaseModel):
 
     dir_dataset_train:str = os.path.join(curr_path, "dataset-train")
     dir_dataset_test:str = os.path.join(curr_path, "dataset-test")
-    yaml_path:str = os.path.join(curr_path, "config/datasetsv2.yaml")
+    yaml_path:str = os.path.join(curr_path, "config/datasets.yaml")
 
     mean:Optional[List[float]] = [0.485, 0.456, 0.406]
     std:Optional[List[float]] = [0.229, 0.224, 0.225]

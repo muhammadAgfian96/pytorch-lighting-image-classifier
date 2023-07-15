@@ -2,7 +2,7 @@
 from collections import defaultdict
 from urllib.parse import urljoin
 
-from clearml import StorageManager
+from clearml import StorageManager, Task
 from rich import print
 
 from src.data_controller.utils import MinioDatasetDownloader
@@ -30,5 +30,9 @@ class S3DirectoryDownloader:
             dataset_dict=dataset_dict_format, 
             output_dir=output_dir_section
         )
-        print(f"\t distribution_final -> {dist_dataset}")
-
+        msg = f"\tdistribution_final -> {dist_dataset}"
+        if len(dist_dataset) == 0:
+            msg+= " ⚠️ Check PATH Dataset ⚠️"
+            print(f"\tpath: {input_dataset}")
+            Task.current_task().add_tags(["⚠️ dataset"])
+        print(msg)

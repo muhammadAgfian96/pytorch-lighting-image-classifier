@@ -113,7 +113,6 @@ class ModelClassifier(pl.LightningModule):
             "Adagrad": optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
             "Adamax": optim.Adamax(self.model.parameters(), lr=self.learning_rate),
         }
-        optim.Lamb
 
         optimizer = opt_d.get(
             self.d_train.optimizer,

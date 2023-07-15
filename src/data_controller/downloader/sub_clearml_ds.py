@@ -161,7 +161,12 @@ class ClearmlDatasetDownloader:
 
         # Print the count of URLs by category
         dist_final = {key: len(urls) for key, urls in filtered_urls_by_category.items()}
-        print(f"\tdistribution_final -> {dist_final}")
+        msg = f"\tdistribution_final -> {dist_final}"
+        if len(dist_final) == 0:
+            msg+= " ⚠️ Check PATH Dataset ⚠️"
+            Task.current_task().add_tags(["⚠️ dataset"])
+            print(f"\tclearml_id: {dataset_input}")
+        print(msg)
         return output_dir
 
 
