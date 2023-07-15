@@ -33,12 +33,8 @@ def clearml_init() -> Task:
         entry_point="src/train.py",
     )
     task.set_base_docker(
-        docker_image="pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime",
-        docker_arguments=["--shm-size=8g", "-e PYTHONPATH=/workspace"],
-        docker_setup_bash_script=[
-            "apt install --no-install-recommends -y zip htop screen libgl1-mesa-glx"
-            " libsm6 libxext6 libxrender-dev"
-        ],
+        docker_image="torch-classifier:latest",
+        docker_arguments=["--shm-size=8g", "-e PYTHONPATH=/workspace"]
     )
     return Task.current_task()
 
