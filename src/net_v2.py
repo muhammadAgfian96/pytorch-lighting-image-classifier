@@ -29,9 +29,9 @@ import uuid
 
 def is_uuid(name):
     # Check if the name is a timm model
-    name_model = name.replace("timm/", "")
-    if name_model in timm.list_models():
-        return True
+    # name_model = name.replace("timm/", "")
+    # if name_model in timm.list_models():
+    #     return True
     
     # Check if the name is a valid UUID
     try:
@@ -40,23 +40,38 @@ def is_uuid(name):
     except ValueError:
         return False
 
+def is_timm_model(name):
+    name_model = name.replace("timm/", "")
+    if name_model in timm.list_models():
+        return True
+    return False
+
 
 class ModelCreation:
-    def __init__(self, architecture:str, num_classes:int, dropout:float) -> None:
+    def __init__(self, architecture:str, num_classes:int, dropout:float, resume:str=None) -> None:
         self.architecture = architecture
         self.path_pretrained = None
         self.num_classes = num_classes
         self.num_classes = dropout
+        self.clearml_id_resume = resume
 
         # print(timm.list_models())
-        print(architecture in timm.list_models())
-        if is_uuid(architecture):
-            model_old = InputModel(model_id=self.architecture)
+        print("architecture in timm_model:", architecture in timm.list_models(), "is_uuid:", is_uuid(architecture))
+        _is_uuid = is_uuid(self.clearml_id_resume)
+        _is_timm_model = is_timm_model(self.architecture)
+
+        if _is_uuid is False and _is_timm_model is False:
+            raise Exception("check again your model architecture or model_clearml_id")
+        
+        if _is_uuid and not _is_timm_model:
+            model_old = InputModel(model_id=self.clearml_id_resume)
             self.architecture = model_old.config_dict["net"]
+            print("model: ", self.architecture)
             print("dowloding model", model_old.config_dict)
             print("old model labels", model_old.labels)
             model_old_path = model_old.get_weights()
             self.path_pretrained = model_old_path
+            Task.current_task().set_parameter(name="2_Model/architecture", value=self.architecture)
 
         self.model = timm.create_model(
             self.architecture,
@@ -67,9 +82,9 @@ class ModelCreation:
 
         if self.path_pretrained is not None:
             # raw way
-            checkpoint = torch.load(self.d_model.path_pretrained)
+            checkpoint = torch.load(self.path_pretrained)
             self.model.load_state_dict(checkpoint["state_dict"], strict=False)
-            Task.current_task().add_tags("resume")
+            Task.current_task().add_tags("▶️")
     
     # def __call__(self, x):
     #     return self.model(x)
@@ -80,17 +95,21 @@ class ModelClassifier(pl.LightningModule):
         super().__init__()
         self.initial_vram_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # Convert to MB
 
-        self.model = ModelCreation(
+        self.model_creation = ModelCreation(
             architecture=d_model.architecture,
             num_classes=d_data.num_classes,
-            dropout=d_model.dropout
-        ).model
+            dropout=d_model.dropout,
+            resume=d_model.resume
+        )
+        self.model = self.model_creation.model
+        self.model_architecture = self.model_creation.architecture
 
         self.final_vram_memory = torch.cuda.max_memory_allocated() / 1024 ** 2  # Convert to MB
 
         self.d_train = d_train
         self.d_data = d_data
         self.d_model = d_model
+        self.d_model.architecture = self.model_architecture
 
         self.learning_rate = d_train.lr
 

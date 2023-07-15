@@ -23,8 +23,11 @@ class CallbackClearML(Callback):
     
     def on_train_start(self, trainer, pl_module:ModelClassifier):
         print("Training is started!")
-        self.task.add_tags(pl_module.d_model.architecture)
-        self.task.add_tags(f"img_sz:{pl_module.d_model.input_size}")
+        self.task.add_tags([f"🧠 {pl_module.model_architecture}"])
+        # self.task.add_tags(f"img_sz:{pl_module.d_model.input_size}")
+    def on_test_start(self, trainer, pl_module: ModelClassifier):
+        self.task.add_tags([f"🧠 {pl_module.model_architecture}"])
+
 
     def on_train_batch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier, outputs, batch, batch_idx):
         section = "train"
@@ -57,7 +60,6 @@ class CallbackClearML(Callback):
         }
         self.__generate_report_epoch_end(section="val", **args)
         pl_module.output_val_step.clear()
-
 
     def on_test_epoch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier):
         losses, preds, labels, imgs = pl_module.output_test_step.get()
@@ -233,7 +235,7 @@ class CallbackClearML(Callback):
                 img_counter = 0
                 fig, axes = plt.subplots(n_row, n_col, figsize=(15, 15))
                 fig.subplots_adjust(hspace=0.5, wspace=0.5)
-                print("success logging")
+                print("success logging viz image")
 
         if img_counter > 0:
             for i in range(img_counter, n_row * n_col):

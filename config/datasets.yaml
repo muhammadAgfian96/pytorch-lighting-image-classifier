@@ -47,7 +47,7 @@ dataset-train:
 - app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Underripe
 - app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_day5/maturity/Unripe
 - app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_retry/maturity
-- app-data-workflow/dataset-dev/IOI/dataset-old-IOI-2022-08-20-curated-datacol/maturity
+# - app-data-workflow/dataset-dev/IOI/dataset-old-IOI-2022-08-20-curated-datacol/maturity
 
 dataset-test:
 - app-data-workflow/dataset-dev/Sime/SimeDarby_20230619_datacol_vanessa_valset/maturity

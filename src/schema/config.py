@@ -34,9 +34,11 @@ class ModelConfig(BaseModel):
     architecture:str
     dropout:float
     path_pretrained:Optional[str] = None
+    resume:Optional[str]
 
 class CustomConfig(BaseModel):
     tags_exclude:List[str]
+    mode:str
 
 
 class AugmentPreset(BaseModel):

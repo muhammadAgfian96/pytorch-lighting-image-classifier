@@ -40,11 +40,13 @@ data_module.prepare_data()
 d_data_config.num_classes = len(data_module.classes_name)
 d_data_config.classes = data_module.classes_name
 
+if d_custom.mode == "testing":
+    task.set_task_type(Task.TaskTypes.testing)
+    
 task.set_model_label_enumeration(d_data_config.label2index())
 
 data_module.visualize_augmented_images("train-augment", num_images=50)
 data_module.visualize_augmented_images("val-augment", num_images=15)
-
 
 log.sub_section("Setup Callbacks")
 checkpoint_callback = ModelCheckpoint(
@@ -98,44 +100,52 @@ trainer = pl.Trainer(
     callbacks=ls_callback,
     precision=d_train.precision,
     default_root_dir="./tmp",
-    log_every_n_steps=10
+    log_every_n_steps=10,
 )
 
-log.sub_section("Tuning Params")
-tuner = Tuner(trainer)
-if d_train.tuner.batch_size:
-    batch_size_finder = tuner.scale_batch_size(
-        model_classifier, 
-        datamodule=data_module, 
-        mode="binsearch",
-        steps_per_trial=6
+if d_custom.mode == "training":
+    log.sub_section("Tuning Params")
+    tuner = Tuner(trainer)
+    if d_train.tuner.batch_size:
+        batch_size_finder = tuner.scale_batch_size(
+            model_classifier, 
+            datamodule=data_module, 
+            mode="binsearch",
+            steps_per_trial=6
+        )
+        Task.current_task().set_parameter("_Autoset/batch_size_finder", batch_size_finder)
+
+    if d_train.tuner.learning_rate:
+        lr_finder = tuner.lr_find(
+            model_classifier, 
+            datamodule=data_module, 
+            mode="exponential",
+            min_lr=1e-5,
+            max_lr=1e-1,
+            early_stop_threshold=5,
+            attr_name="learning_rate"
+        )
+        fig = lr_finder.plot(suggest=True)
+        Task.current_task().get_logger().report_matplotlib_figure("lr_finder", "lr_finder", iteration=0, figure=fig)
+        Task.current_task().set_parameter("_autoset/lr_finder", lr_finder.suggestion())
+
+    data_module.setup(stage="fit")
+    trainer.fit(model=model_classifier, datamodule=data_module)
+
+    data_module.setup(stage="test")
+    trainer.test(datamodule=data_module)
+
+elif d_custom.mode == "testing":
+    log.sub_section("Testing Only")
+
+    data_module.setup(stage="test")
+    trainer.test(datamodule=data_module, model=model_classifier)
+
+if d_custom.mode == "training":
+    export_handler(
+        checkpoint_callback=checkpoint_callback, 
+        model_classifier=model_classifier, 
+        d_data=d_data_config, 
+        d_model=d_model, 
     )
-    Task.current_task().set_parameter("_Autoset/batch_size_finder", batch_size_finder)
-
-if d_train.tuner.learning_rate:
-    lr_finder = tuner.lr_find(
-        model_classifier, 
-        datamodule=data_module, 
-        mode="exponential",
-        min_lr=1e-5,
-        max_lr=1e-1,
-        early_stop_threshold=5,
-        attr_name="learning_rate"
-    )
-    fig = lr_finder.plot(suggest=True)
-    Task.current_task().get_logger().report_matplotlib_figure("lr_finder", "lr_finder", iteration=0, figure=fig)
-    Task.current_task().set_parameter("_autoset/lr_finder", lr_finder.suggestion())
-
-data_module.setup(stage="fit")
-trainer.fit(model=model_classifier, datamodule=data_module)
-
-data_module.setup(stage="test")
-trainer.test(datamodule=data_module)
-
-export_handler(
-    checkpoint_callback=checkpoint_callback, 
-    model_classifier=model_classifier, 
-    d_data=d_data_config, 
-    d_model=d_model, 
-)
 

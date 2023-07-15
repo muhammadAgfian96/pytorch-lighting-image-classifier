@@ -38,11 +38,13 @@ args_train = {
 
 args_model = {
     "input_size": 224,
-    "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
-    "dropout": 0.0
+    # "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
+    "architecture": "",
+    "dropout": 0.0,
+    "resume": "e850a641f21a40cfaa536eb4a189bfd5"
 }
 
 args_custom = {
     "tags_exclude": ["drop", "remove"],
-    "mode": "training"
+    "mode": "testing"
 }
