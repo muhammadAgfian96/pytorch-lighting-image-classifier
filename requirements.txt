@@ -1,14 +1,14 @@
 # core training
 torch==2.0.1
-torchmetrics==0.11.4
+torchmetrics==1.0.1
 torchvision==0.15.2
 timm==0.9.2
-lightning==2.0.4
+lightning==2.0.5
 
 # image-processing
 albumentations==1.3.1
 opencv_python_headless==4.7.0.72
-Pillow
+Pillow==10.0.0
 
 
 # tuning
@@ -23,10 +23,10 @@ rich==13.3.2
 # graph
 scikit_learn==1.2.2
 matplotlib==3.7.1
-seaborn
-tqdm
-pandas
-plotly
+seaborn==0.12.2
+tqdm==4.65.0
+pandas==2.0.3
+plotly==5.15.0
 
 # data
 
@@ -36,12 +36,12 @@ GPUtil
 onnxruntime
 
 # utils
-pydantic
+pydantic<2.0
 PyYAML==6.0
 boto3
 minio==7.1.15
 ipython
-python-dotenv
+python-dotenv==1.0.0
 
 
 
