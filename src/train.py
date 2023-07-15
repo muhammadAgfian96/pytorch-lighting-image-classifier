@@ -107,15 +107,25 @@ if d_custom.mode == "training":
     log.sub_section("Tuning Params")
     tuner = Tuner(trainer)
     if d_train.tuner.batch_size:
+        log.sub_section("BATCH SIZE TUNING (AUTO SEARCH)")
         batch_size_finder = tuner.scale_batch_size(
             model_classifier, 
             datamodule=data_module, 
             mode="binsearch",
-            steps_per_trial=6
+            steps_per_trial=6,
+            max_trials=7,
+            init_val=d_train.batch if d_train.batch <= 32 else 4
         )
+        if batch_size_finder > 100:
+            data_module.batch_size = int(batch_size_finder*0.85)
+            print(f"💡 Reduced batch_size finder from {batch_size_finder} to {data_module.batch_size}")
+            batch_size_finder = int(batch_size_finder*0.85)
         Task.current_task().set_parameter("_Autoset/batch_size_finder", batch_size_finder)
+        Task.current_task().set_parameter("3_Training/batch", batch_size_finder)
 
     if d_train.tuner.learning_rate:
+        log.sub_section("Learning Rate TUNING (AUTO SEARCH)")
+
         lr_finder = tuner.lr_find(
             model_classifier, 
             datamodule=data_module, 

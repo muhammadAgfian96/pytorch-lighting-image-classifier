@@ -166,6 +166,7 @@ class ImageDataModule(pl.LightningDataModule):
             )
 
     def train_dataloader(self):
+        print("batch_size_train:", self.batch_size)
         return DataLoader(
             self.data_train,
             batch_size=self.batch_size,
@@ -175,6 +176,7 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
+        print("\nbatch_size_val:", self.batch_size)
         return DataLoader(
             self.data_val, 
             batch_size=int(self.batch_size), 
@@ -183,6 +185,7 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self):
+        print("batch_size_test:", self.batch_size)
         return DataLoader(
             self.data_test, 
             batch_size=int(self.batch_size), 

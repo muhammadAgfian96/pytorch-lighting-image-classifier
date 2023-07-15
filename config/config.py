@@ -46,5 +46,5 @@ args_model = {
 
 args_custom = {
     "tags_exclude": ["drop", "remove"],
-    "mode": "testing"
+    "mode": "training"
 }

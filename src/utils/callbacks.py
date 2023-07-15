@@ -121,7 +121,7 @@ class CallbackClearML(Callback):
         
         # Calculate Metrics
         acc = fm.accuracy(**args_metrics)
-        f1 = fm.f1_score(**args_metrics)
+        f1 = fm.f1_score(**args_metrics, average="weighted")
         precision = fm.precision(**args_metrics)
         recall = fm.recall(**args_metrics)
         tensor_cm = fm.confusion_matrix(
