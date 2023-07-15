@@ -41,10 +41,16 @@ def is_uuid(name):
         return False
 
 def is_timm_model(name):
+
     name_model = name.replace("timm/", "")
-    if name_model in timm.list_models():
+
+    try:
+        timm.create_model(name)
         return True
-    return False
+    except Exception as e:
+        print("ERROR Load Model {name}")
+        print(e)
+        return False
 
 
 class ModelCreation:
