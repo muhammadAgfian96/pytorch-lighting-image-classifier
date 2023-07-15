@@ -4,8 +4,12 @@ from typing import Tuple
 from clearml import Task
 
 from config.config import args_custom, args_data, args_model, args_train
-from src.schema.config import (CustomConfig, DataConfig, ModelConfig,
-                               TrainConfig)
+from src.schema.config import (
+    CustomConfig, 
+    DataConfig, 
+    ModelConfig,
+    TrainConfig
+)
 from src.utils.utils import read_yaml
 
 
@@ -47,7 +51,7 @@ def clearml_configuration() -> Tuple[DataConfig, TrainConfig, ModelConfig, Custo
     task.connect(args_custom, "4_Custom")
 
     # update dataset yaml via clearml ui
-    path_data_yaml = os.path.join(os.getcwd(),"config/datasetsv2.yaml")
+    path_data_yaml = os.path.join(os.getcwd(),"config/datasets.yaml")
     path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
 
     d_data_config = DataConfig(**args_data)
