@@ -56,9 +56,9 @@ class ModelCreation:
         self.clearml_id_resume = resume
 
         # print(timm.list_models())
-        print("architecture in timm_model:", architecture in timm.list_models(), "is_uuid:", is_uuid(architecture))
         _is_uuid = is_uuid(self.clearml_id_resume)
         _is_timm_model = is_timm_model(self.architecture)
+        print("architecture in timm_model:", _is_timm_model, "| is_uuid:", _is_uuid)
 
         if _is_uuid is False and _is_timm_model is False:
             raise Exception("check again your model architecture or model_clearml_id")
