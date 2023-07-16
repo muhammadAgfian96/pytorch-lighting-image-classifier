@@ -22,8 +22,9 @@ from config.list_models import list_models as ls_models_library
 from src.schema.config import DataConfig, ModelConfig, TrainConfig
 from utils.utils_roc import generate_plot_one_vs_one, generate_plot_one_vs_rest
 from schema.net_v2 import OutputStep
-from timm.optim.optim_factory import create_optimizer 
-
+from timm.optim.optim_factory import create_optimizer, create_optimizer_v2
+from timm.scheduler.scheduler_factory import create_scheduler_v2
+from config.list_timm_of_optimizer import LIST_OPTIMIZERS_TIMM
 import timm
 import uuid
 
@@ -45,7 +46,7 @@ def is_timm_model(name):
     name_model = name.replace("timm/", "")
 
     try:
-        timm.create_model(name)
+        timm.create_model(name_model)
         return True
     except Exception as e:
         print("ERROR Load Model {name}")
@@ -128,20 +129,14 @@ class ModelClassifier(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        opt_d = {
-            "Adam": optim.Adam(self.model.parameters(), lr=self.learning_rate),
-            "SGD": optim.SGD(self.model.parameters(), lr=self.learning_rate),
-            "AdamW": optim.AdamW(self.model.parameters(), lr=self.learning_rate),
-            "RMSprop": optim.RMSprop(self.model.parameters(), lr=self.learning_rate),
-            "Nadam": optim.NAdam(self.model.parameters(), lr=self.learning_rate),
-            "Adadelta": optim.Adadelta(self.model.parameters(), lr=self.learning_rate),
-            "Adagrad": optim.Adagrad(self.model.parameters(), lr=self.learning_rate),
-            "Adamax": optim.Adamax(self.model.parameters(), lr=self.learning_rate),
-        }
-
-        optimizer = opt_d.get(
-            self.d_train.optimizer,
-            optim.Adam(self.model.parameters(), lr=self.learning_rate),
+        opt_name = self.d_train.optimizer.lower()
+        if opt_name not in LIST_OPTIMIZERS_TIMM:
+            opt_name = "adamw"
+        
+        optimizer = create_optimizer_v2(
+            model_or_params=self.model.parameters(), 
+            opt=opt_name, 
+            lr=self.learning_rate
         )
         return optimizer
 
