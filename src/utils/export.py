@@ -83,15 +83,19 @@ def export_handler(
 
     log.sub_section("Upload raw model")
     for d_item in ls_upload_model:
-        if d_item["name_upload"] == "onnx":
-            print("Exporting model to ONNX...")
-            model_classifier.to_onnx(d_item["path_weights"], input_sample)
-        if d_item["name_upload"] == "torchscript":
-            print("Exporting model to TorchScript...")
-            torch.jit.save(model_classifier.to_torchscript(), d_item["path_weights"])
+        try:
+            if d_item["name_upload"] == "onnx":
+                print("Exporting model to ONNX...")
+                model_classifier.to_onnx(d_item["path_weights"], input_sample)
+            if d_item["name_upload"] == "torchscript":
+                print("Exporting model to TorchScript...")
+                torch.jit.save(model_classifier.to_torchscript(), d_item["path_weights"])
 
-        export_upload_model(d_model=d_model, **d_item)
-
+            export_upload_model(d_model=d_model, **d_item)
+        except Exception as e:
+            print("ERROR to EXPORT MODEL")
+            print(d_item)
+            print(e)
 
 
 def testing_model_prediction(
