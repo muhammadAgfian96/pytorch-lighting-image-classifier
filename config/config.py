@@ -15,8 +15,8 @@ args_data = {
 
 args_train = {
     "epoch": 10,
-    "batch": 16,
-    "optimizer": ListOptimizer.AdamW,
+    "batch": 32,
+    "optimizer": "adamw",
     "weight_decay": 0,
     "momentum": 0.9,
     "lr": 1.0e-3,
@@ -37,11 +37,11 @@ args_train = {
 }
 
 args_model = {
-    "input_size": 224,
+    "input_size": 300,
     # "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
-    "architecture": "",
+    "architecture": "tf_efficientnetv2_b3.in21k_ft_in1k",
     "dropout": 0.0,
-    "resume": "e850a641f21a40cfaa536eb4a189bfd5"
+    "resume": ""
 }
 
 args_custom = {
