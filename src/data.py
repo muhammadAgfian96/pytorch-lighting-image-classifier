@@ -18,6 +18,7 @@ from src.augment.custom import CustomAugmentation
 from src.data_controller.downloader.manager import DownloaderManager
 from src.data_controller.manipulator.splitter_dataset import splitter_dataset
 from src.schema.config import DataConfig, ModelConfig, TrainConfig, CustomConfig
+# from 
 
 
 class ImageDatasetBinsho(Dataset):
@@ -109,6 +110,10 @@ class ImageDataModule(pl.LightningDataModule):
                 """
                 
                 # Download
+                from src.utils.utils import read_yaml
+                print(self.d_dataset.yaml_path)
+                print("inside:", read_yaml(self.d_dataset.yaml_path))
+
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
                     input_dataset=self.d_dataset.yaml_path,
                     output_dir=self.d_dataset.dir_dataset_train,

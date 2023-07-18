@@ -11,7 +11,7 @@ task = Task.init(
     tags=["template", "debug"],
 )
 
-path_data_yaml = "/workspace/config/datasetsv2.yaml"
+path_data_yaml = "/workspace/config/datasets.yaml"
 
 conf = TrainingConfig()
 data_module = ImageDataModule(conf=conf, path_yaml_data=path_data_yaml)
