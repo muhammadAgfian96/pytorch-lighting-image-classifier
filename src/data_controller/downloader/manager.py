@@ -65,7 +65,6 @@ class DownloaderManager:
         if 's3://' in input_dataset:
             print('🔨 Working on S3-Directory-Single-Link Mode')
             print('\n[TRAINING DATASET]')
-            print("input_dataset:", input_dataset)
             self.s3_dir_downloader.download(
                 input_dataset=input_dataset,
                 output_dir_section=path_dir_train
@@ -76,7 +75,6 @@ class DownloaderManager:
             print('🔨 Working on YAML Mode')
             # 1 read yaml, ouput list of url/ids
             d_dataset = self.read_dataset_yaml(input_dataset)
-            print("d_dataset:", d_dataset)
             if d_dataset.get('dataset-train'):
                 print('\n[TRAINING DATASET]')
                 self.__download_datasets_from_yaml(
