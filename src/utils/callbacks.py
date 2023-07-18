@@ -168,9 +168,8 @@ class CallbackClearML(Callback):
             color_continuous_scale=color_map,
         )
 
-        self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()}", iteration=pl_module.current_epoch, figure=fig_cm) 
+        self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()} ({acc} %)", iteration=pl_module.current_epoch, figure=fig_cm) 
 
-    
     def __visualize_images(self,
         imgs, labels, preds,
         epoch,
