@@ -11,7 +11,7 @@ from src.schema.config import (
     TrainConfig
 )
 from src.utils.utils import read_yaml
-
+from rich import print
 
 def clearml_init() -> Task:
     req_path = os.path.join(os.getcwd(), 'requirements.txt')
@@ -51,8 +51,11 @@ def clearml_configuration() -> Tuple[DataConfig, TrainConfig, ModelConfig, Custo
     task.connect(args_custom, "4_Custom")
 
     # update dataset yaml via clearml ui
-    path_data_yaml = os.path.join(os.getcwd(),"config/datasets.yaml")
+    path_data_yaml = os.path.join(os.getcwd(), "config/datasets.yaml")
+    print("data_sebelum", read_yaml(path_data_yaml))
     path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
+    data_sesudah = read_yaml(path_data_yaml)
+    print("data_sesudah", data_sesudah)
 
     d_data_config = DataConfig(**args_data)
     d_train = TrainConfig(**args_train)
