@@ -7,6 +7,7 @@ from rich import print
 from config.default import TrainingConfig
 from src.schema.config import DataConfig
 from utils.utils import check_image_health
+from clearml import Task
 
 random.seed(1) 
 
@@ -87,6 +88,8 @@ def splitter_dataset(d_dataset:DataConfig, path_dir_train, path_dir_test):
 
     class_names_train = sorted([lbl.lower() for lbl in ls_class_train])
     print(f"class_names_train -> {class_names_train}")
+    Task.current_task().set_parameter("_Autoset/class_names", class_names_train)
+    Task.current_task().set_parameter("_Autoset/num_class", len(class_names_train))
     # claxss_naxmes_t = sorted([lbl.lower() for lbl in ls_class_test])
     # checking datatest all class is in datatrain
     for lbl in ls_class_test:
