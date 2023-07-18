@@ -38,6 +38,8 @@ def export_upload_model(d_model: ModelConfig,
                 "input_size": d_model.input_size,
             }
         )
+        output_model.set_metadata("imgsz", value=d_model.input_size)
+        output_model.set_metadata("architecture", value=d_model.architecture)
     except Exception as e:
         print(f"Error Upload {name_upload}-{framework}".upper(), e)
 
