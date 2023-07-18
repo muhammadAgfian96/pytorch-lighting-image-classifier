@@ -111,7 +111,7 @@ class ImageDataModule(pl.LightningDataModule):
                 
                 # Download
                 from src.utils.utils import read_yaml
-                print(self.d_dataset.yaml_path)
+                print("yaml_path:", self.d_dataset.yaml_path)
                 print("inside:", read_yaml(self.d_dataset.yaml_path))
 
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
