@@ -124,6 +124,7 @@ class CallbackClearML(Callback):
         f1 = fm.f1_score(**args_metrics, average="weighted")
         precision = fm.precision(**args_metrics)
         recall = fm.recall(**args_metrics)
+        
         tensor_cm = fm.confusion_matrix(
             **args_metrics, threshold=0.6
         )
@@ -166,9 +167,10 @@ class CallbackClearML(Callback):
             df_cm,
             text_auto=True,
             color_continuous_scale=color_map,
+            title=f"({acc} %)"
         )
 
-        self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()} ({acc} %)", iteration=pl_module.current_epoch, figure=fig_cm) 
+        self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()}", iteration=pl_module.current_epoch, figure=fig_cm) 
 
     def __visualize_images(self,
         imgs, labels, preds,
