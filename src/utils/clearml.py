@@ -52,12 +52,12 @@ def clearml_configuration() -> Tuple[DataConfig, TrainConfig, ModelConfig, Custo
 
     # update dataset yaml via clearml ui
     path_data_yaml = os.path.join(os.getcwd(), "config/datasets.yaml")
-    print("data_sebelum", read_yaml(path_data_yaml))
+    print(f"data_sebelum {path_data_yaml}", read_yaml(path_data_yaml))
     path_data_yaml = task.connect_configuration(path_data_yaml, "datasets.yaml")
     data_sesudah = read_yaml(path_data_yaml)
-    print("data_sesudah", data_sesudah)
+    print(f"data_sesudah: {path_data_yaml}", data_sesudah)
 
-    d_data_config = DataConfig(**args_data)
+    d_data_config = DataConfig(**args_data, yaml_path=path_data_yaml)
     d_train = TrainConfig(**args_train)
     d_model = ModelConfig(**args_model)
     d_custom = CustomConfig(**args_custom)
