@@ -26,10 +26,9 @@ def clearml_init() -> Task:
         task_name="Image Classifier",
         task_type=Task.TaskTypes.training,
         auto_connect_frameworks=False,
-        tags=tags,
         reuse_last_task_id=False,
-        
     )
+    task.set_tags(tags)
     task.set_script(
         repository="https://github.com/muhammadAgfian96/pytorch-lighting-image-classifier.git",
         branch="new/v2",
