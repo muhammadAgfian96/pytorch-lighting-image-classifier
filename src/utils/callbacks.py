@@ -9,11 +9,14 @@ from lightning.pytorch.callbacks import Callback
 from clearml import Task
 import torch 
 import torchmetrics.functional as fm
+from torchmetrics import classification as clsm
 import pandas as pd
 import plotly.express as px
 from src.utils.utils import denormalize_image, denormalize_imagev2
 from PIL import Image
 from uuid import uuid4
+from sklearn.metrics import precision_recall_fscore_support
+
 
 class CallbackClearML(Callback):
     def __init__(self) -> None:
@@ -25,9 +28,9 @@ class CallbackClearML(Callback):
         print("Training is started!")
         self.task.add_tags([f"🧠 {pl_module.model_architecture}"])
         # self.task.add_tags(f"img_sz:{pl_module.d_model.input_size}")
+    
     def on_test_start(self, trainer, pl_module: ModelClassifier):
         self.task.add_tags([f"🧠 {pl_module.model_architecture}"])
-
 
     def on_train_batch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier, outputs, batch, batch_idx):
         section = "train"
@@ -171,6 +174,30 @@ class CallbackClearML(Callback):
         )
 
         self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()}", iteration=pl_module.current_epoch, figure=fig_cm) 
+
+        # Compute precision, recall, F1 score, and support for each class
+        # precision each_class
+        # Get the class predictions
+        _, pred_np = torch.max(args_metrics["preds"], dim=1)
+        # Convert the tensors to NumPy arrays
+        preds_np = pred_np.cpu().numpy()
+        target_np = args_metrics["target"].cpu().numpy()
+        precision_cls, recall_cls, f1_cls, count_cls = precision_recall_fscore_support(target_np, preds_np, average=None)
+        if len(pl_module.d_data.classes) <= 5:
+            for i, cls_name in enumerate(pl_module.d_data.classes):
+                self.logger.report_scalar(title=f"F1 Score_{section}", series=f"{cls_name}", value=f1_cls[i], **args_cml)
+                self.logger.report_scalar(title=f"Precision_{section}_", series=f"{cls_name}", value=precision_cls[i], **args_cml)
+                self.logger.report_scalar(title=f"Recall_{section}_", series=f"{cls_name}", value=recall_cls[i], **args_cml)
+
+        df_prec = pd.DataFrame({
+            'Class': [cls_.capitalize() for cls_ in pl_module.d_data.classes],
+            'Precision': precision_cls,
+            'Recall': recall_cls,
+            'F1 Score': f1_cls,
+            'Support': count_cls
+        })
+        self.logger.report_table(title="Table of Metrics", series=f"prec_rec_f1-{section}", table_plot=df_prec, **args_cml)
+
 
     def __visualize_images(self,
         imgs, labels, preds,

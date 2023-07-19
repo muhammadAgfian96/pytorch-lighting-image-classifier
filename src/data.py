@@ -214,7 +214,7 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
         Task.current_task().get_logger().report_plotly(
-            title="Data Distribution Section",
+            title="_Data Distribution Section",
             series="Train/Val/Test",
             figure=fig_dist_train_val_test,
             iteration=1,
@@ -258,7 +258,7 @@ class ImageDataModule(pl.LightningDataModule):
         fig_bar_class = go.Figure(data=[trace1, trace2, trace3], layout=layout)
 
         Task.current_task().get_logger().report_plotly(
-            title="Data Distribution Section",
+            title="_Data Distribution Section",
             series="Class View",
             figure=fig_bar_class,
             iteration=1,
