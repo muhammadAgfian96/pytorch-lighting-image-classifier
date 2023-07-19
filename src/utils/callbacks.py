@@ -113,6 +113,7 @@ class CallbackClearML(Callback):
             losses, preds, labels,
             section:str="train"
         ):
+        section = section.capitalize()
         loss = torch.stack([x for x in losses]).mean()
         
         args_metrics = {
@@ -143,17 +144,15 @@ class CallbackClearML(Callback):
         }
         if section == "test": args_cml["iteration"] -= 1
         
-        self.logger.report_scalar(title="Loss", series=f"loss_{section}", value=loss, **args_cml)
-        self.logger.report_scalar(title="Accuracy", series=f"acc_{section}", value=acc, **args_cml)
-        self.logger.report_scalar(title="F1 Score", series=f"f1_{section}", value=f1, **args_cml)
-        self.logger.report_scalar(title="Precision", series=f"precision_{section}", value=precision, **args_cml)
-        self.logger.report_scalar(title="Recall", series=f"recall_{section}", value=recall, **args_cml)
+        self.logger.report_scalar(title="Loss", series=f"{section}", value=loss, **args_cml)
+        self.logger.report_scalar(title="Accuracy", series=f"{section}", value=acc, **args_cml)
+        self.logger.report_scalar(title="F1-Score", series=f"{section}", value=f1, **args_cml)
+        self.logger.report_scalar(title="Precision", series=f"{section}", value=precision, **args_cml)
+        self.logger.report_scalar(title="Recall", series=f"{section}", value=recall, **args_cml)
 
         if section == "train":
             self.logger.report_scalar("Learning Rate", "lr", pl_module.learning_rate, pl_module.current_epoch)
         
-        # 
-
         df_cm = pd.DataFrame(
             tensor_cm.cpu().numpy(),
             index=[lbl + "_gt" for lbl in pl_module.d_data.classes],
@@ -185,9 +184,9 @@ class CallbackClearML(Callback):
         precision_cls, recall_cls, f1_cls, count_cls = precision_recall_fscore_support(target_np, preds_np, average=None)
         if len(pl_module.d_data.classes) <= 5:
             for i, cls_name in enumerate(pl_module.d_data.classes):
-                self.logger.report_scalar(title=f"F1 Score_{section}", series=f"{cls_name}", value=f1_cls[i], **args_cml)
-                self.logger.report_scalar(title=f"Precision_{section}_", series=f"{cls_name}", value=precision_cls[i], **args_cml)
-                self.logger.report_scalar(title=f"Recall_{section}_", series=f"{cls_name}", value=recall_cls[i], **args_cml)
+                self.logger.report_scalar(title=f"F1-Score {section}", series=f"{cls_name}", value=f1_cls[i], **args_cml)
+                self.logger.report_scalar(title=f"Precision {section}", series=f"{cls_name}", value=precision_cls[i], **args_cml)
+                self.logger.report_scalar(title=f"Recall {section}", series=f"{cls_name}", value=recall_cls[i], **args_cml)
 
         df_prec = pd.DataFrame({
             'Class': [cls_.capitalize() for cls_ in pl_module.d_data.classes],
