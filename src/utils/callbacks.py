@@ -113,7 +113,7 @@ class CallbackClearML(Callback):
             losses, preds, labels,
             section:str="train"
         ):
-        section = section.capitalize()
+        
         loss = torch.stack([x for x in losses]).mean()
         
         args_metrics = {
@@ -165,6 +165,7 @@ class CallbackClearML(Callback):
             color_map = px.colors.sequential.Blues
         if section == "train":
             color_map = px.colors.sequential.Greens
+
         fig_cm = px.imshow(
             df_cm,
             text_auto=True,
@@ -182,6 +183,8 @@ class CallbackClearML(Callback):
         preds_np = pred_np.cpu().numpy()
         target_np = args_metrics["target"].cpu().numpy()
         precision_cls, recall_cls, f1_cls, count_cls = precision_recall_fscore_support(target_np, preds_np, average=None)
+        
+        section = section.capitalize()
         if len(pl_module.d_data.classes) <= 5:
             for i, cls_name in enumerate(pl_module.d_data.classes):
                 self.logger.report_scalar(title=f"F1-Score {section}", series=f"{cls_name}", value=f1_cls[i], **args_cml)
