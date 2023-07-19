@@ -24,7 +24,7 @@ task = clearml_init()
 log.title_section('Configuration Setup')
 d_data_config, d_train, d_model, d_custom = clearml_configuration()
 
-task.execute_remotely()
+# task.execute_remotely()
 
 log.title_section("Prepare Data, Model, Callbacks For Training")
 pl.seed_everything(os.getenv("RANDOM_SEED", 32))
@@ -101,7 +101,7 @@ trainer = pl.Trainer(
     precision=d_train.precision,
     default_root_dir="./tmp",
     log_every_n_steps=10,
-    limit_val_batches=128
+    limit_val_batches=64
 )
 
 if d_custom.mode == "training":
@@ -112,7 +112,7 @@ if d_custom.mode == "training":
         try:
             batch_size_finder = tuner.scale_batch_size(
                 model_classifier, 
-                method="fit",
+                # method="fit",
                 datamodule=data_module, 
                 mode="binsearch",
                 steps_per_trial=6,
@@ -120,11 +120,10 @@ if d_custom.mode == "training":
                 init_val=d_train.batch if d_train.batch <= 32 else 4
             )
             if batch_size_finder > 100:
-                data_module.batch_size = int(batch_size_finder*0.85)
-                print(f"💡 Reduced batch_size finder from {batch_size_finder} to {data_module.batch_size}")
-                batch_size_finder = int(batch_size_finder*0.85)
-                Task.current_task().set_parameter("_Autoset/batch_size_finder", batch_size_finder)
-                Task.current_task().set_parameter("3_Training/batch", batch_size_finder)
+                data_module.batch_size = int(batch_size_finder*0.8)
+                print(f"💡 batch_size_finder: {batch_size_finder} -> batch_size: {data_module.batch_size}")
+            Task.current_task().set_parameter("_Autoset/batch_size_finder", data_module.batch_size)
+            Task.current_task().set_parameter("3_Training/batch", data_module.batch_size)
         except Exception as e:
             print("Error autobatch:")
             print(e)
@@ -145,6 +144,7 @@ if d_custom.mode == "training":
         Task.current_task().get_logger().report_matplotlib_figure("lr_finder", "lr_finder", iteration=0, figure=fig)
         Task.current_task().set_parameter("_autoset/lr_finder", lr_finder.suggestion())
 
+    log.sub_section("Training Start")
     data_module.setup(stage="fit")
     trainer.fit(model=model_classifier, datamodule=data_module)
 
