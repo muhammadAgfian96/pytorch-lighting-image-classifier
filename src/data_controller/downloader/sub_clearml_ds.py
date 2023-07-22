@@ -133,6 +133,7 @@ class ClearmlDatasetDownloader:
         dataset = Dataset.get(dataset_id=dataset_id)
         path_dir_ds = dataset.get_local_copy()
 
+        # TODO: enable for merge dataset
         # Find the first file annotations in the directory
         filename_coco = os.listdir(path_dir_ds)[0]
         path_ds_coco = os.path.join(path_dir_ds, filename_coco)
