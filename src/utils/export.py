@@ -69,14 +69,14 @@ def export_handler(
             "path_weights": checkpoint_callback.last_model_path,
         },
         {
-            "name_upload": "onnx",
-            "framework": "ONNX",
-            "path_weights": os.path.join(path_export_model, f"onnx-{d_model.architecture}.onnx"),
-        },
-        {
             "name_upload": "torchscript",
             "framework": "Pytorch",
             "path_weights": os.path.join(path_export_model, f"torchscript-{d_model.architecture}.pt"),
+        },
+        {
+            "name_upload": "onnx",
+            "framework": "ONNX",
+            "path_weights": os.path.join(path_export_model, f"onnx-{d_model.architecture}.onnx"),
         },
     ]
 
@@ -89,6 +89,7 @@ def export_handler(
             if d_item["name_upload"] == "onnx":
                 print("Exporting model to ONNX...")
                 model_classifier.to_onnx(d_item["path_weights"], input_sample)
+
             if d_item["name_upload"] == "torchscript":
                 print("Exporting model to TorchScript...")
                 torch.jit.save(model_classifier.to_torchscript(), d_item["path_weights"])

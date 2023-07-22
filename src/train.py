@@ -101,7 +101,7 @@ trainer = pl.Trainer(
     precision=d_train.precision,
     default_root_dir="./tmp",
     log_every_n_steps=10,
-    limit_val_batches=64
+    # limit_val_batches=64
 )
 
 if d_custom.mode == "training":
@@ -157,7 +157,7 @@ elif d_custom.mode == "testing":
     data_module.setup(stage="test")
     trainer.test(datamodule=data_module, model=model_classifier)
 
-if d_custom.mode == "training":
+if d_custom.mode == "training" and os.getenv("DEBUG", "no") == "no":
     export_handler(
         checkpoint_callback=checkpoint_callback, 
         model_classifier=model_classifier, 

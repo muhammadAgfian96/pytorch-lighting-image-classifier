@@ -15,6 +15,7 @@ import plotly.express as px
 from src.utils.utils import denormalize_image, denormalize_imagev2
 from PIL import Image
 from uuid import uuid4
+from rich import print
 from sklearn.metrics import precision_recall_fscore_support
 
 
@@ -37,7 +38,8 @@ class CallbackClearML(Callback):
         self.__generate_report_step_end(outputs=outputs, section=section, pl_module=pl_module)
 
     def on_train_epoch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier):
-        losses, preds, labels, imgs = pl_module.output_train_step.get()
+        # losses, preds, labels, imgs
+        losses, preds, labels, _ = pl_module.output_train_step.get()
         args = {
             "trainer": trainer, 
             "pl_module": pl_module, 
@@ -53,7 +55,8 @@ class CallbackClearML(Callback):
         self.__generate_report_step_end(outputs=outputs, section=section, pl_module=pl_module)
 
     def on_validation_epoch_end(self, trainer:pl.Trainer, pl_module:ModelClassifier):
-        losses, preds, labels, imgs = pl_module.output_val_step.get()
+        # losses, preds, labels, imgs
+        losses, preds, labels, _ = pl_module.output_val_step.get()
         args = {
             "trainer": trainer, 
             "pl_module": pl_module, 
@@ -130,7 +133,8 @@ class CallbackClearML(Callback):
         recall = fm.recall(**args_metrics)
         
         tensor_cm = fm.confusion_matrix(
-            **args_metrics, threshold=0.6
+            **args_metrics, 
+            # threshold=0.3
         )
         # PyTorch Lightning Logging
         pl_module.log_dict({
@@ -152,7 +156,7 @@ class CallbackClearML(Callback):
 
         if section == "train":
             self.logger.report_scalar("Learning Rate", "lr", pl_module.learning_rate, pl_module.current_epoch)
-        
+
         df_cm = pd.DataFrame(
             tensor_cm.cpu().numpy(),
             index=[lbl + "_gt" for lbl in pl_module.d_data.classes],
@@ -176,15 +180,19 @@ class CallbackClearML(Callback):
         self.logger.report_plotly(title="Confusion Matrix", series=f"{section.capitalize()}", iteration=pl_module.current_epoch, figure=fig_cm) 
 
         # Compute precision, recall, F1 score, and support for each class
-        # precision each_class
-        # Get the class predictions
-        _, pred_np = torch.max(args_metrics["preds"], dim=1)
         # Convert the tensors to NumPy arrays
+        _, pred_np = torch.max(args_metrics["preds"], dim=1)
         preds_np = pred_np.cpu().numpy()
         target_np = args_metrics["target"].cpu().numpy()
-        precision_cls, recall_cls, f1_cls, count_cls = precision_recall_fscore_support(target_np, preds_np, average=None)
+
+        precision_cls, recall_cls, f1_cls, count_cls = precision_recall_fscore_support(
+            target_np, preds_np, 
+            # average='weighted', 
+            labels=[idx for idx, lbl in enumerate(pl_module.d_data.classes)],
+            zero_division=0
+        )
         
-        section = section.capitalize()
+        # section = section.capitalize()
         if len(pl_module.d_data.classes) <= 5:
             for i, cls_name in enumerate(pl_module.d_data.classes):
                 self.logger.report_scalar(title=f"F1-Score {section}", series=f"{cls_name}", value=f1_cls[i], **args_cml)
