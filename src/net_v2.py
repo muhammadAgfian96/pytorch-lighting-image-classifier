@@ -50,6 +50,7 @@ def is_timm_model(name):
         return True
     except Exception as e:
         print("ERROR Load Model {name}")
+        Task.current_task().add_tags("⛔:architecture")
         print(e)
         return False
 
