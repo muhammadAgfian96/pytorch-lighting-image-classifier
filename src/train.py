@@ -100,8 +100,7 @@ trainer = pl.Trainer(
     callbacks=ls_callback,
     precision=d_train.precision,
     default_root_dir="./tmp",
-    log_every_n_steps=10,
-    # limit_val_batches=64
+    log_every_n_steps=10
 )
 
 if d_custom.mode == "training":
