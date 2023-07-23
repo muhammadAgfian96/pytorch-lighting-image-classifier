@@ -88,8 +88,8 @@ def splitter_dataset(d_dataset:DataConfig, path_dir_train, path_dir_test):
 
     class_names_train = sorted([lbl.lower() for lbl in ls_class_train])
     print(f"class_names_train -> {class_names_train}")
-    Task.current_task().set_parameter("_Autoset/class_names", class_names_train)
-    Task.current_task().set_parameter("_Autoset/num_class", len(class_names_train))
+    Task.current_task().set_parameter("_autoset/class_names", class_names_train)
+    Task.current_task().set_parameter("_autoset/num_class", len(class_names_train))
     # claxss_naxmes_t = sorted([lbl.lower() for lbl in ls_class_test])
     # checking datatest all class is in datatrain
     for lbl in ls_class_test:
