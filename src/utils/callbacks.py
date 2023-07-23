@@ -103,7 +103,8 @@ class CallbackClearML(Callback):
             loss = outputs
         else:
             loss = outputs.get("loss", 0)
-        pl_module.log(f"{section}_loss", loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        if section == "train":
+            pl_module.log(f"{section}_loss", loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
         self.logger.report_scalar(
             title="Loss Step", 
             series=f"loss_{section}", 
