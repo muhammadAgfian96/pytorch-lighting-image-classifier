@@ -18,6 +18,7 @@ from src.augment.custom import CustomAugmentation
 from src.data_controller.downloader.manager import DownloaderManager
 from src.data_controller.manipulator.splitter_dataset import splitter_dataset
 from src.schema.config import DataConfig, ModelConfig, TrainConfig, CustomConfig
+import math
 # from 
 
 
@@ -180,10 +181,13 @@ class ImageDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        print("\nbatch_size_val:", int(self.batch_size*0.1))
+        batch_size_val = math.ceil(self.batch_size*0.15)
+        if batch_size_val <= 0:
+            batch_size_val=2
+        print("\nbatch_size_val:", batch_size_val)
         return DataLoader(
             self.data_val, 
-            batch_size=int(self.batch_size*0.1), 
+            batch_size=batch_size_val, 
             num_workers=4,
             pin_memory=True
         )

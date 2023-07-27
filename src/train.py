@@ -15,6 +15,7 @@ from src.utils.callbacks import CallbackClearML
 from src.utils.clearml import clearml_configuration, clearml_init
 from src.utils.export import export_handler
 from src.utils.logger import LoggerStdOut
+import math
 log = LoggerStdOut()
 
 # ClearML Setup
@@ -119,7 +120,7 @@ if d_custom.mode == "training":
                 init_val=d_train.batch if d_train.batch <= 32 else 4
             )
             if batch_size_finder > 100:
-                data_module.batch_size = int(batch_size_finder*0.8)
+                data_module.batch_size = math.ceil(batch_size_finder*0.8)
                 print(f"💡 batch_size_finder: {batch_size_finder} -> batch_size: {data_module.batch_size}")
             Task.current_task().set_parameter("_autoset/batch_size_finder", data_module.batch_size)
             Task.current_task().set_parameter("3_Training/batch", data_module.batch_size)
