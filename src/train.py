@@ -25,7 +25,7 @@ task = clearml_init()
 log.title_section('Configuration Setup')
 d_data_config, d_train, d_model, d_custom = clearml_configuration()
 
-# task.execute_remotely()
+task.execute_remotely()
 
 log.title_section("Prepare Data, Model, Callbacks For Training")
 pl.seed_everything(os.getenv("RANDOM_SEED", 32))
@@ -120,7 +120,7 @@ if d_custom.mode == "training":
                 init_val=d_train.batch if d_train.batch <= 32 else 4
             )
             if batch_size_finder > 100:
-                data_module.batch_size = math.ceil(batch_size_finder*0.8)
+                data_module.batch_size = math.ceil(batch_size_finder*0.84)
                 print(f"💡 batch_size_finder: {batch_size_finder} -> batch_size: {data_module.batch_size}")
             Task.current_task().set_parameter("_autoset/batch_size_finder", data_module.batch_size)
             Task.current_task().set_parameter("3_Training/batch", data_module.batch_size)

@@ -49,8 +49,7 @@ def is_timm_model(name):
         timm.create_model(name_model)
         return True
     except Exception as e:
-        print("ERROR Load Model {name}")
-        Task.current_task().add_tags("⛔:architecture")
+        print(f"ERROR Load Model via Timm {name}")
         print(e)
         return False
 
@@ -69,6 +68,7 @@ class ModelCreation:
         print("architecture in timm_model:", _is_timm_model, "| is_uuid:", _is_uuid)
 
         if _is_uuid is False and _is_timm_model is False:
+            Task.current_task().add_tags("⛔:architecture")
             raise Exception("check again your model architecture or model_clearml_id")
         
         if _is_uuid and not _is_timm_model:
