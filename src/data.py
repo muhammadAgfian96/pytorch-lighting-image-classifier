@@ -117,7 +117,8 @@ class ImageDataModule(pl.LightningDataModule):
                 output_dir_train, output_dir_test = DownloaderManager().fetch(
                     input_dataset=self.d_dataset.yaml_path,
                     output_dir=self.d_dataset.dir_dataset_train,
-                    exclude_tags=self.d_custom_config.tags_exclude
+                    exclude_tags=self.d_custom_config.tags_exclude,
+                    tags_to_class=self.d_custom_config.tags_to_class
                 )
                 
                 (

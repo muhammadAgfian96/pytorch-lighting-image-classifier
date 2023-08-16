@@ -2,7 +2,7 @@ from config.list_optimizer import ListOptimizer
 
 args_data = {
     "ratio_train": 0.8,
-    "ratio_val": 0.2,
+    "ratio_val": 0.1,
     "ratio_test": 0.0,
     "augment_type": "custom",
     "augment_preset_train": {
@@ -10,12 +10,13 @@ args_data = {
         "ra_magnitude": 9,
         "augmix_severity": 3,
         "random_erase_prob": 0.0
-    }
+    },
+
 }
 
 args_train = {
-    "epoch": 10,
-    "batch": 32,
+    "epoch": 100,
+    "batch": 64,
     "optimizer": "adamw",
     "weight_decay": 0,
     "momentum": 0.9,
@@ -37,14 +38,18 @@ args_train = {
 }
 
 args_model = {
-    "input_size": 300,
+    "input_size": 224,
     # "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
-    "architecture": "tf_efficientnetv2_b3.in21k_ft_in1k",
-    "dropout": 0.0,
+    "architecture": "tf_mobilenetv3_small_minimal_100.in1k",
+    "dropout": 0.2,
     "resume": ""
 }
 
 args_custom = {
-    "tags_exclude": ["drop", "remove"],
-    "mode": "training"
+    "tags_exclude": [],
+    "mode": "training",
+    "tags_to_class": {
+        "keep": ["keep"],
+        "drop": ["drop", "background", "skip", "blur", "remove"]
+    }
 }

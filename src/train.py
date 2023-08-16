@@ -25,7 +25,7 @@ task = clearml_init()
 log.title_section('Configuration Setup')
 d_data_config, d_train, d_model, d_custom = clearml_configuration()
 
-task.execute_remotely()
+# task.execute_remotely()
 
 log.title_section("Prepare Data, Model, Callbacks For Training")
 pl.seed_everything(os.getenv("RANDOM_SEED", 32))

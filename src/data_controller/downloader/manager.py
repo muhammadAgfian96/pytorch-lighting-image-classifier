@@ -38,7 +38,7 @@ class DownloaderManager:
 
         return d_dataset
 
-    def __download_datasets_from_yaml(self, ls_dataset, output_dir_section, exclude_tags=[]):
+    def __download_datasets_from_yaml(self, ls_dataset, output_dir_section, exclude_tags=[], tags_to_class=None):
         for number, ds in enumerate(ls_dataset, start=1):
             if '/' in ds:
                 print(f'{number}. 🗑️ YAML: S3 Directory')
@@ -55,10 +55,11 @@ class DownloaderManager:
                     creation_minio_downloader=self.minio_downloader,
                     dataset_input=ds,
                     output_dir=output_dir_section,
-                    exclude_tags=exclude_tags
+                    exclude_tags=exclude_tags,
+                    tags_to_class=tags_to_class
                 )
 
-    def fetch(self, input_dataset, output_dir, exclude_tags=[]):
+    def fetch(self, input_dataset, output_dir, exclude_tags=[], tags_to_class=None):
         print('[FETCHING DATASET]>>>>>>>>>>>>>>>>>>>>>')
         path_dir_train, path_dir_test = self.__create_output_dir(output_dir)
         
@@ -80,14 +81,17 @@ class DownloaderManager:
                 self.__download_datasets_from_yaml(
                     d_dataset['dataset-train'], 
                     output_dir_section=path_dir_train,
-                    exclude_tags=exclude_tags
+                    exclude_tags=exclude_tags,
+                    tags_to_class=tags_to_class
                 )
 
             if d_dataset.get('dataset-test'):
                 print('\n[TESTING DATASET]')
                 self.__download_datasets_from_yaml(
                     d_dataset['dataset-test'], 
-                    output_dir_section=path_dir_test
+                    output_dir_section=path_dir_test,
+                    exclude_tags=exclude_tags,
+                    tags_to_class=tags_to_class
                 )
             else:
                 print("🚫 NO TESTING DATASET 🚫")
@@ -97,8 +101,21 @@ class DownloaderManager:
         return path_dir_train, path_dir_test
 
 if __name__ == '__main__':
-    input_dataset = 's3://10.8.0.66:9000/app-data-workflow/dataset-playground/Vegetables/test'
-    input_dataset = '/mnt/hdd_2/agfian/common-project/classifier/pytorch-lighting-image-classifier/config/datasetsv2.yaml'
-    output_dir = './dataset-testing'
-    dir_train, dir_test = DownloaderManager().fetch(input_dataset, output_dir)    
+    # input_dataset = 's3://10.8.0.66:9000/app-data-workflow/dataset-playground/Vegetables/test'
+    input_dataset = './config/datasetsv2.yaml'
+    output_dir = './dataset-testing-tags'
+    from config.config import args_custom
+    from src.schema.config import (
+        CustomConfig, 
+        DataConfig, 
+        ModelConfig,
+        TrainConfig
+    )
+    custom = CustomConfig(**args_custom)
+    dir_train, dir_test = DownloaderManager().fetch(
+        input_dataset, 
+        output_dir, 
+        exclude_tags=custom.tags_exclude, 
+        tags_to_class=custom.tags_to_class
+    )    
     print(dir_train, dir_test)

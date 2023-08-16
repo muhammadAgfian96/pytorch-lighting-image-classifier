@@ -160,9 +160,18 @@ class CocoFormat(BaseModel):
         return v
 
     # functions
-    def get_img_urls_by_category(self, exclude_tags:List = []) -> Dict[str, List[str]]:
+    def get_img_urls_by_category(
+            self, 
+            exclude_tags:List = [],
+            tags_to_class:Dict = None,
+        ) -> Dict[str, List[str]]:
         """
         expected only one annotation per image
+
+        tags_to_class = {
+            "class_1": ["tags_1", "tags_2"],
+            "class_2": ["tags_3", "tags_4"]
+        }
         """
         exclude_tags = [tag.lower() for tag in exclude_tags]
 
@@ -170,14 +179,24 @@ class CocoFormat(BaseModel):
         d_data = self.dict_annotations_by_img_id()
         d_image = self.dict_images_by_id()
         d_download = defaultdict(list)
+
         for img_id, anns in d_data.items():
             ann = anns[0]
             label_name = idcat2lblcat[ann.category_id]
-            ann.attributes.get("tags", [])
-            if any([tag.lower() in exclude_tags for tag in ann.attributes.get("tags", [])]):
-                print(f"skipping {img_id} because of tags", ann.attributes.get("tags", []))
+            tags = [tag.lower() for tag in ann.attributes.get("tags", [])]
+            if any([tag in exclude_tags for tag in tags]):
+                print(f"SKIP: {img_id} because of tags", tags)
                 continue
-            d_download[label_name].append(d_image[img_id].url)
+            
+            if tags_to_class is not None:
+                for tag in tags:
+                    for class_tag, ls_tags in tags_to_class.items():
+                        ls_tags = [str_tags.lower() for str_tags in ls_tags]
+                        if tag in ls_tags:
+                            d_download[class_tag].append(d_image[img_id].url)
+                            continue
+            else:
+                d_download[label_name].append(d_image[img_id].url)
         return d_download
 
     def dict_images_by_id(self) -> Dict[int, ImageCoco]:

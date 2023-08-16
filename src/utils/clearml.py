@@ -15,10 +15,9 @@ from rich import print
 
 def clearml_init() -> Task:
     req_path = os.path.join(os.getcwd(), 'requirements.txt')
-    tags = ["🏷️ v2.1"]
+    tags = ["🏷️ v2.2"]
     if os.getenv("MODE_TEMPLATE", "remote") == "debug":
         tags.append("debug")
-
 
     Task.add_requirements(req_path)
     task:Task = Task.init(

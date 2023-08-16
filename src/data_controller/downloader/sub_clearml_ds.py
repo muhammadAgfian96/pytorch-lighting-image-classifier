@@ -121,7 +121,8 @@ class ClearmlDatasetDownloader:
             creation_minio_downloader:MinioDatasetDownloader, 
             dataset_input:str, 
             output_dir:str="./datadir-debug",
-            exclude_tags:list=[]
+            exclude_tags:list=[],
+            tags_to_class=None
         ):
         """
         return outputdir
@@ -146,8 +147,8 @@ class ClearmlDatasetDownloader:
         print(f"\t distribution_raw -> {coco_format.info.summary.distribution_categories}")
 
         # Get image URLs by category
-        urls_by_category = coco_format.get_img_urls_by_category(exclude_tags=exclude_tags)
-
+        urls_by_category = coco_format.get_img_urls_by_category(exclude_tags=exclude_tags, tags_to_class=tags_to_class)
+        # print(urls_by_category)
         # Apply query and get filtered URLs by category
         if limit_query is None:
             filtered_urls_by_category = urls_by_category
@@ -165,7 +166,10 @@ class ClearmlDatasetDownloader:
         msg = f"\tdistribution_final -> {dist_final}"
         if len(dist_final) == 0:
             msg+= " ⚠️ Check PATH Dataset ⚠️"
-            Task.current_task().add_tags(["⚠️ dataset"])
+            if Task.current_task():
+                Task.current_task().add_tags(["⚠️ dataset"])
+            else:
+                print(" ⚠️ NOT USE CLEARML")
             print(f"\tclearml_id: {dataset_input}")
         print(msg)
         return output_dir

@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Union
+from typing import List, Optional, Union,Dict
 
 from pydantic import BaseModel
 
@@ -39,6 +39,7 @@ class ModelConfig(BaseModel):
 class CustomConfig(BaseModel):
     tags_exclude:List[str]
     mode:str
+    tags_to_class:Optional[Dict[str, List[str]]]
 
 
 class AugmentPreset(BaseModel):
