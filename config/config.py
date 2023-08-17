@@ -40,7 +40,7 @@ args_train = {
 args_model = {
     "input_size": 224,
     # "architecture": "timm/tf_mobilenetv3_small_minimal_100.in1k",
-    "architecture": "tf_mobilenetv3_small_minimal_100.in1k",
+    "architecture": "tf_efficientnet_b1",
     "dropout": 0.2,
     "resume": ""
 }
