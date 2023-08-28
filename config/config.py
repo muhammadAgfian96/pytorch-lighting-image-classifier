@@ -46,10 +46,10 @@ args_model = {
 }
 
 args_custom = {
-    "tags_exclude": [],
+    "tags_exclude": ["drop"],
     "mode": "training",
-    "tags_to_class": {
-        "keep": ["keep"],
-        "drop": ["drop", "background", "skip", "blur", "remove"]
-    }
+    # "tags_to_class": {
+    #     "keep": ["keep"],
+    #     "drop": ["drop", "background", "skip", "blur", "remove"]
+    # }
 }

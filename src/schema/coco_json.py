@@ -180,12 +180,14 @@ class CocoFormat(BaseModel):
         d_image = self.dict_images_by_id()
         d_download = defaultdict(list)
 
+        total_skip = defaultdict(int)
         for img_id, anns in d_data.items():
             ann = anns[0]
             label_name = idcat2lblcat[ann.category_id]
             tags = [tag.lower() for tag in ann.attributes.get("tags", [])]
             if any([tag in exclude_tags for tag in tags]):
-                print(f"SKIP: {img_id} because of tags", tags)
+                for tag in tags:
+                    total_skip[tag] += 1
                 continue
             
             if tags_to_class is not None:
@@ -197,6 +199,8 @@ class CocoFormat(BaseModel):
                             continue
             else:
                 d_download[label_name].append(d_image[img_id].url)
+
+        print("\t❌ total_skip=", dict(total_skip))
         return d_download
 
     def dict_images_by_id(self) -> Dict[int, ImageCoco]:

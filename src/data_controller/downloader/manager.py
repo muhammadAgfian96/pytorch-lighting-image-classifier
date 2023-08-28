@@ -9,6 +9,7 @@ from src.data_controller.downloader.sub_clearml_ds import \
 from src.data_controller.downloader.sub_s3_directory_ds import \
     S3DirectoryDownloader
 from src.data_controller.utils import MinioDatasetDownloader
+from clearml import Task
 
 
 class DownloaderManager:
@@ -39,9 +40,14 @@ class DownloaderManager:
         return d_dataset
 
     def __download_datasets_from_yaml(self, ls_dataset, output_dir_section, exclude_tags=[], tags_to_class=None):
+            
         for number, ds in enumerate(ls_dataset, start=1):
             if '/' in ds:
                 print(f'{number}. 🗑️ YAML: S3 Directory')
+                if tags_to_class is not None:
+                    print("warning: tags_to_class is not supported in this mode")
+                    Task.add_tags("🚨:s3:tags_to_class")
+                    print("warning: this mode is not recommended")
                 # urls fetcher
                 self.s3_dir_downloader.download(
                     craetion_minio_downloader=self.minio_downloader,
@@ -51,6 +57,9 @@ class DownloaderManager:
             else:
                 # clearml id with coco fetcher
                 print(f'{number}. 🍈 YAML: clearml_id')
+                if tags_to_class is not None:
+                    print("tags_to_class activate")
+                    Task.add_tags("🔥tags_to_class")
                 self.clearml_downloader.download(
                     creation_minio_downloader=self.minio_downloader,
                     dataset_input=ds,
@@ -102,7 +111,7 @@ class DownloaderManager:
 
 if __name__ == '__main__':
     # input_dataset = 's3://10.8.0.66:9000/app-data-workflow/dataset-playground/Vegetables/test'
-    input_dataset = './config/datasetsv2.yaml'
+    input_dataset = './config/datasets.yaml'
     output_dir = './dataset-testing-tags'
     from config.config import args_custom
     from src.schema.config import (

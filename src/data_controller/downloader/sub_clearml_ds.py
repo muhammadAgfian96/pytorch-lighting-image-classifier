@@ -148,7 +148,7 @@ class ClearmlDatasetDownloader:
 
         # Get image URLs by category
         urls_by_category = coco_format.get_img_urls_by_category(exclude_tags=exclude_tags, tags_to_class=tags_to_class)
-        # print(urls_by_category)
+        # print("urls_by_category", urls_by_category)
         # Apply query and get filtered URLs by category
         if limit_query is None:
             filtered_urls_by_category = urls_by_category
